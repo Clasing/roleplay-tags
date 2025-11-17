@@ -40,9 +40,12 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
       
       setIsLoadingRoleplayLanguage(true);
       try {
-        const response = await fetch(
-          `/api/roleplay-languages?roleId=${roleId}&language=${selectedLanguage}`
-        );
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9090';
+        const roleplayLanguageUrl = `${apiBaseUrl}/api/v2/clasing-ai/roleplay-agents/languages/by-role?roleId=${encodeURIComponent(
+          roleId
+        )}&language=${encodeURIComponent(selectedLanguage)}`;
+
+        const response = await fetch(roleplayLanguageUrl);
         
         if (response.ok) {
           const data = await response.json();

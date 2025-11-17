@@ -10,12 +10,9 @@ interface Roleplay {
 
 async function getRoleplays(): Promise<Roleplay[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!baseUrl) {
-      throw new Error('NEXT_PUBLIC_BASE_URL no está configurada en las variables de entorno');
-    }
-    
-    const res = await fetch(`${baseUrl}/api/roleplays`, {
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9090';
+
+    const res = await fetch(`${apiBaseUrl}/api/v2/clasing-ai/roleplay-agents/all`, {
       cache: 'no-store',
     });
     
