@@ -288,7 +288,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-black dark:border-zinc-700 dark:border-t-white"></div>
           </div>
         ) : (
-          <>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <MultiSelect
               label="skillMain"
               options={availableSkills.map(s => s.value)}
@@ -328,7 +328,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
               defaultCheckboxValue={useDefaultForSubGrammar}
               onDefaultCheckboxChange={setUseDefaultForSubGrammar}
             />
-          </>
+          </div>
         )}
 
         <button
