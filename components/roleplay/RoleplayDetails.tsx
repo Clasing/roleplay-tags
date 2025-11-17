@@ -113,11 +113,13 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                 onChange={(e) => setSelectedLanguage(e.target.value)}
                 className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-900 transition-colors focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-zinc-600"
               >
-                {availableLanguages.map((lang) => (
-                  <option key={lang.id} value={lang.language}>
-                    {lang.language}
-                  </option>
-                ))}
+                {availableLanguages
+                  .filter((lang) => lang.language?.toUpperCase() !== 'DEFAULT')
+                  .map((lang) => (
+                    <option key={lang.id} value={lang.language}>
+                      {lang.language}
+                    </option>
+                  ))}
               </select>
             )}
           </div>

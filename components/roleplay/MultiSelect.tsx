@@ -8,9 +8,13 @@ interface MultiSelectProps {
   selected: string[];
   onChange: (selected: string[]) => void;
   onAddNew?: (value: string) => Promise<boolean>;
+  showDefaultCheckbox?: boolean;
+  defaultCheckboxLabel?: string;
+  defaultCheckboxValue?: boolean;
+  onDefaultCheckboxChange?: (checked: boolean) => void;
 }
 
-export default function MultiSelect({ label, options, selected, onChange, onAddNew }: MultiSelectProps) {
+export default function MultiSelect({ label, options, selected, onChange, onAddNew, showDefaultCheckbox, defaultCheckboxLabel, defaultCheckboxValue, onDefaultCheckboxChange }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newValue, setNewValue] = useState('');
@@ -86,31 +90,44 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
             {onAddNew && (
               <div className="border-t border-gray-200 pt-2 dark:border-zinc-800">
                 {isAddingNew ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newValue}
-                      onChange={(e) => setNewValue(e.target.value)}
-                      placeholder="Nuevo valor..."
-                      className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddNew()}
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleAddNew}
-                      className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsAddingNew(false);
-                        setNewValue('');
-                      }}
-                      className="rounded-md bg-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-400 dark:bg-zinc-700 dark:text-gray-300"
-                    >
-                      ✕
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newValue}
+                        onChange={(e) => setNewValue(e.target.value)}
+                        placeholder="Nuevo valor..."
+                        className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddNew()}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleAddNew}
+                        className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAddingNew(false);
+                          setNewValue('');
+                        }}
+                        className="rounded-md bg-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-400 dark:bg-zinc-700 dark:text-gray-300"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {showDefaultCheckbox && (
+                      <label className="flex items-center gap-2 px-3 text-xs text-gray-500 dark:text-gray-400">
+                        <input
+                          type="checkbox"
+                          checked={defaultCheckboxValue}
+                          onChange={(e) => onDefaultCheckboxChange?.(e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-gray-300 text-black focus:ring-black dark:border-zinc-700 dark:bg-zinc-800"
+                        />
+                        {defaultCheckboxLabel}
+                      </label>
+                    )}
                   </div>
                 ) : (
                   <button

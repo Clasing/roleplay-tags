@@ -133,7 +133,7 @@ export async function createGrammarType(value: string, languageId: string): Prom
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/grammar-types`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value, language: languageId }),
+      body: JSON.stringify({ value, languageId }),
     });
     return response.ok;
   } catch (error) {
@@ -155,12 +155,12 @@ export async function getSubGrammarTypes(): Promise<SubGrammarType[]> {
   }
 }
 
-export async function createSubGrammarType(value: string, grammarId: string, languageId: string): Promise<boolean> {
+export async function createSubGrammarType(value: string, grammarTypeId: string, languageId: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-grammar-types`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value, grammar: grammarId, language: languageId }),
+      body: JSON.stringify({ value, grammarTypeId, languageId }),
     });
     return response.ok;
   } catch (error) {

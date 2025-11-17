@@ -256,9 +256,9 @@ await createGrammarType(value, languageId);
 
 #### Sub-Grammar Types requieren Grammar y Language:
 ```typescript
-const grammarId = availableGrammar.find(g => g.value === selectedGrammar[0])?.id;
+const grammarTypeId = availableGrammar.find(g => g.value === selectedGrammar[0])?.id;
 const languageId = availableLanguages.find(l => l.language === selectedLanguage)?.id;
-await createSubGrammarType(value, grammarId, languageId);
+await createSubGrammarType(value, grammarTypeId, languageId);
 ```
 
 ---

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Roleplay } from '@/types/roleplay';
 import MultiSelect from '@/components/roleplay/MultiSelect';
 import {
@@ -53,6 +53,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedSubSkills, setSelectedSubSkills] = useState<string[]>(roleplay.subSkill || []);
   const [selectedGrammar, setSelectedGrammar] = useState<string[]>(roleplay.grammar || []);
   const [selectedSubgrammar, setSelectedSubgrammar] = useState<string[]>(roleplay.subgrammar || []);
+  const [useDefaultForSubSkill, setUseDefaultForSubSkill] = useState(false);
+  const [useDefaultForSubGrammar, setUseDefaultForSubGrammar] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -74,6 +76,11 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     loadData();
   }, []);
 
+  const defaultLanguage = useMemo(
+    () => availableLanguages.find((lang) => lang.language?.toUpperCase() === 'DEFAULT'),
+    [availableLanguages]
+  );
+
   const getSelectedLanguageId = useCallback(() => {
     if (!selectedLanguage) return undefined;
     const normalized = selectedLanguage.toUpperCase();
@@ -82,16 +89,21 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
 
   const applyLanguageFilters = useCallback(() => {
     const languageId = getSelectedLanguageId();
+    const defaultLangId = defaultLanguage?.id;
 
     if (languageId) {
       const filteredSubSkills = allSubSkills.filter(subSkill => {
         const subSkillLanguage = (subSkill as unknown as { language?: string; languageId?: string }).language ?? (subSkill as unknown as { languageId?: string }).languageId;
-        return !subSkillLanguage || subSkillLanguage === languageId;
+        if (!subSkillLanguage) return true;
+        if (subSkillLanguage === defaultLangId) return true;
+        return subSkillLanguage === languageId;
       });
 
       const filteredSubgrammar = allSubgrammar.filter(subGrammar => {
         const subGrammarLanguage = (subGrammar as unknown as { language?: string; languageId?: string }).language ?? (subGrammar as unknown as { languageId?: string }).languageId;
-        return !subGrammarLanguage || subGrammarLanguage === languageId;
+        if (!subGrammarLanguage) return true;
+        if (subGrammarLanguage === defaultLangId) return true;
+        return subGrammarLanguage === languageId;
       });
 
       setAvailableSubSkills(filteredSubSkills);
@@ -103,7 +115,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setAvailableSubSkills(allSubSkills);
       setAvailableSubgrammar(allSubgrammar);
     }
-  }, [getSelectedLanguageId, allSubSkills, allSubgrammar]);
+  }, [getSelectedLanguageId, allSubSkills, allSubgrammar, defaultLanguage]);
 
   useEffect(() => {
     applyLanguageFilters();
@@ -122,14 +134,17 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     const skillId = selectedSkills.length > 0 
       ? availableSkills.find(s => s.value === selectedSkills[0])?.id 
       : availableSkills[0]?.id;
-    const languageId = getSelectedLanguageId();
     
-    if (!skillId || !languageId) {
+    const targetLanguageId = useDefaultForSubSkill && defaultLanguage?.id
+      ? defaultLanguage.id
+      : getSelectedLanguageId();
+    
+    if (!skillId || !targetLanguageId) {
       console.error('No skill or language available to associate sub-skill');
       return false;
     }
     
-    const success = await createSubSkill(value, skillId, languageId);
+    const success = await createSubSkill(value, skillId, targetLanguageId);
     if (success) {
       const updatedSubSkills = await getSubSkills();
       setAllSubSkills(updatedSubSkills);
@@ -154,18 +169,20 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   };
 
   const handleAddSubgrammar = async (value: string) => {
-    const grammarId = selectedGrammar.length > 0
+    const grammarTypeId = selectedGrammar.length > 0
       ? availableGrammar.find(g => g.value === selectedGrammar[0])?.id
       : availableGrammar[0]?.id;
     
-    const languageId = getSelectedLanguageId();
+    const targetLanguageId = useDefaultForSubGrammar && defaultLanguage?.id
+      ? defaultLanguage.id
+      : getSelectedLanguageId();
     
-    if (!grammarId || !languageId) {
+    if (!grammarTypeId || !targetLanguageId) {
       console.error('No grammar or language available to associate sub-grammar');
       return false;
     }
     
-    const success = await createSubGrammarType(value, grammarId, languageId);
+    const success = await createSubGrammarType(value, grammarTypeId, targetLanguageId);
     if (success) {
       const updatedSubgrammar = await getSubGrammarTypes();
       setAllSubgrammar(updatedSubgrammar);
@@ -286,6 +303,10 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
               selected={selectedSubSkills}
               onChange={setSelectedSubSkills}
               onAddNew={handleAddSubSkill}
+              showDefaultCheckbox={!!defaultLanguage}
+              defaultCheckboxLabel="Guardar en DEFAULT"
+              defaultCheckboxValue={useDefaultForSubSkill}
+              onDefaultCheckboxChange={setUseDefaultForSubSkill}
             />
 
             <MultiSelect
@@ -302,6 +323,10 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
               selected={selectedSubgrammar}
               onChange={setSelectedSubgrammar}
               onAddNew={handleAddSubgrammar}
+              showDefaultCheckbox={!!defaultLanguage}
+              defaultCheckboxLabel="Guardar en DEFAULT"
+              defaultCheckboxValue={useDefaultForSubGrammar}
+              onDefaultCheckboxChange={setUseDefaultForSubGrammar}
             />
           </>
         )}
