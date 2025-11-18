@@ -2,7 +2,8 @@ import Image from "next/image";
 
 interface RoleplayCardProps {
   roleplay: {
-    _id: string;
+    _id?: string;
+    id?: string;
     name: string;
     description: string;
     image: string;
@@ -11,6 +12,12 @@ interface RoleplayCardProps {
 }
 
 export default function RoleplayCard({ roleplay, onViewDetails }: RoleplayCardProps) {
+  const roleplayId = roleplay._id || roleplay.id;
+  const handleViewDetails = () => {
+    if (!roleplayId) return;
+    onViewDetails?.(roleplayId);
+  };
+
   return (
     <div className="group relative flex h-[420px] flex-col items-center overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-gray-50 p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-gray-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:from-zinc-900 dark:to-black dark:shadow-[0_1px_3px_rgba(255,255,255,0.02)] dark:hover:border-zinc-700 dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.06)]">
       
@@ -43,7 +50,7 @@ export default function RoleplayCard({ roleplay, onViewDetails }: RoleplayCardPr
       </p>
 
       <button 
-        onClick={() => onViewDetails?.(roleplay._id)}
+        onClick={handleViewDetails}
         className="group/btn relative mt-auto w-full overflow-hidden rounded-lg border border-gray-900 bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-all duration-300 hover:bg-white hover:text-gray-900 dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-900 dark:hover:text-gray-100"
       >
         <span className="relative z-10 flex items-center justify-center gap-2">

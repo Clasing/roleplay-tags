@@ -1,7 +1,8 @@
 import RoleplayCard from './RoleplayCard';
 
 interface Roleplay {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   description: string;
   image: string;
@@ -42,7 +43,7 @@ export default function RoleplayGrid({ roleplays, onViewDetails }: RoleplayGridP
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {roleplays.map((roleplay) => (
         <RoleplayCard
-          key={roleplay._id}
+          key={roleplay._id || roleplay.id || roleplay.name}
           roleplay={roleplay}
           onViewDetails={onViewDetails}
         />

@@ -1,5 +1,7 @@
 // API service para gestionar skills, subskills, grammar, etc.
 
+import { Roleplay } from '@/types/roleplay';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9090';
 
 export interface Skill {
@@ -32,6 +34,74 @@ export interface SubGrammarType {
 export interface Language {
   id: string;
   language: string;
+}
+
+export interface VocabularySet {
+  id: string;
+  vocabulary: string[];
+  subVocabulary: string[];
+}
+
+export interface CreateVocabularyPayload {
+  vocabulary: string[];
+  subVocabulary: string[];
+}
+
+export interface RoleplayActivity {
+  id: string;
+  rolePlayId: string;
+  textId: string | null;
+  language: string;
+  theme: string | string[];
+  skillMain: string[];
+  subSkill: string[];
+  grammar: string[];
+  subGrammar: string[];
+  vocabularyI: string | null;
+  durationAprox: number;
+}
+
+// Roleplays
+export async function getRoleplayById(roleplayId: string): Promise<Roleplay | null> {
+  try {
+    if (!roleplayId || roleplayId === 'undefined' || roleplayId === 'null') {
+      console.warn('Invalid roleplayId provided:', roleplayId);
+      return null;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/v2/clasing-ai/roleplay-agents/public/${roleplayId}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error('Error al obtener roleplay');
+    }
+    const data: Roleplay = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching roleplay:', error);
+    return null;
+  }
+}
+
+// Roleplay Activities
+export async function getRoleplayActivity(roleplayId: string): Promise<RoleplayActivity | null> {
+  try {
+    // Validar que roleplayId no sea undefined, null o string vacío
+    if (!roleplayId || roleplayId === 'undefined' || roleplayId === 'null') {
+      console.warn('Invalid roleplayId provided:', roleplayId);
+      return null;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/activities/roleplays/${roleplayId}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error('Error al obtener actividad del roleplay');
+    }
+    const data: RoleplayActivity = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching roleplay activity:', error);
+    return null;
+  }
 }
 
 // Languages
@@ -172,12 +242,14 @@ export async function createSubGrammarType(value: string, grammarTypeId: string,
 // Activity (guardar roleplay completo)
 export interface ActivityPayload {
   rolePlayId: string;
+  textId?: string | null;
   language: string;
-  theme: string;
+  theme: string[];
   skillMain: string[];
   subSkill: string[];
   grammar: string[];
   subGrammar: string[];
+  vocabularyI?: string | null;
   durationAprox: number;
 }
 
@@ -192,5 +264,40 @@ export async function createActivity(payload: ActivityPayload): Promise<boolean>
   } catch (error) {
     console.error('Error creating activity:', error);
     return false;
+  }
+}
+
+export async function getVocabularies(): Promise<VocabularySet[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies`);
+    if (!response.ok) throw new Error('Error al obtener vocabularios');
+    const data: VocabularySet[] = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching vocabularies:', error);
+    return [];
+  }
+}
+
+export async function createVocabulary(payload: CreateVocabularyPayload): Promise<VocabularySet | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al crear vocabulario');
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return null;
+    }
+    return JSON.parse(responseText) as VocabularySet;
+  } catch (error) {
+    console.error('Error creating vocabulary:', error);
+    return null;
   }
 }

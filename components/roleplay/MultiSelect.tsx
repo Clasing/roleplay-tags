@@ -12,18 +12,31 @@ interface MultiSelectProps {
   defaultCheckboxLabel?: string;
   defaultCheckboxValue?: boolean;
   onDefaultCheckboxChange?: (checked: boolean) => void;
+  singleSelect?: boolean;
 }
 
-export default function MultiSelect({ label, options, selected, onChange, onAddNew, showDefaultCheckbox, defaultCheckboxLabel, defaultCheckboxValue, onDefaultCheckboxChange }: MultiSelectProps) {
+export default function MultiSelect({ label, options, selected, onChange, onAddNew, showDefaultCheckbox, defaultCheckboxLabel, defaultCheckboxValue, onDefaultCheckboxChange, singleSelect }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newValue, setNewValue] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredOptions = options.filter(option =>
+    option.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const toggleOption = (option: string) => {
-    if (selected.includes(option)) {
-      onChange(selected.filter(item => item !== option));
+    if (singleSelect) {
+      // En modo single-select, solo permite seleccionar uno y cierra automáticamente
+      onChange(selected.includes(option) ? [] : [option]);
+      setIsOpen(false);
     } else {
-      onChange([...selected, option]);
+      // En modo multi-select, permite múltiples selecciones
+      if (selected.includes(option)) {
+        onChange(selected.filter(item => item !== option));
+      } else {
+        onChange([...selected, option]);
+      }
     }
   };
 
@@ -69,45 +82,136 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
 
       {isOpen && (
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          {options.length > 0 && (
+          {/* Barra de búsqueda */}
+          <div className="border-b border-gray-200 p-3 dark:border-zinc-800">
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg
+                  className="h-4 w-4 text-gray-400 dark:text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar..."
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm transition-all placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-blue-600"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filteredOptions.length > 0 && (
             <div className="max-h-64 overflow-y-auto p-2">
               <div className="space-y-0.5">
-                {options.map((option) => (
-                  <label
-                    key={option}
-                    className={`group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
-                      selected.includes(option)
-                        ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
-                        : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
-                    }`}
-                  >
-                    <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(option)}
-                        onChange={() => toggleOption(option)}
-                        className="h-4 w-4 cursor-pointer rounded border-2 border-gray-300 text-blue-600 transition-all focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 dark:border-zinc-600 dark:bg-zinc-800"
-                      />
+                {singleSelect ? (
+                  // Modo single-select: usar botones simples sin checkboxes
+                  filteredOptions.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => toggleOption(option)}
+                      className={`group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all ${
+                        selected.includes(option)
+                          ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
+                          : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      <span className={`text-sm font-medium ${selected.includes(option) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {option}
+                      </span>
                       {selected.includes(option) && (
                         <svg
-                          className="pointer-events-none absolute left-0.5 h-3 w-3 text-white"
+                          className="ml-auto h-4 w-4 text-blue-600 dark:text-blue-400"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
                       )}
-                    </div>
-                    <span className={`text-sm font-medium ${selected.includes(option) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                      {option}
-                    </span>
-                  </label>
-                ))}
+                    </button>
+                  ))
+                ) : (
+                  // Modo multi-select: usar checkboxes
+                  filteredOptions.map((option) => (
+                    <label
+                      key={option}
+                      className={`group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
+                        selected.includes(option)
+                          ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
+                          : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      <div className="relative flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(option)}
+                          onChange={() => toggleOption(option)}
+                          className="h-4 w-4 cursor-pointer rounded border-2 border-gray-300 text-blue-600 transition-all focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 dark:border-zinc-600 dark:bg-zinc-800"
+                        />
+                        {selected.includes(option) && (
+                          <svg
+                            className="pointer-events-none absolute left-0.5 h-3 w-3 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-sm font-medium ${selected.includes(option) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {option}
+                      </span>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
           )}
-            
+
+          {filteredOptions.length === 0 && (
+            <div className="px-4 py-8 text-center">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                No se encontraron resultados
+              </p>
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                Intenta con otro término de búsqueda
+              </p>
+            </div>
+          )}
           
           {onAddNew && (
             <div className="border-t border-gray-200 p-2 dark:border-zinc-800">

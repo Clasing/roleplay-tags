@@ -1,13 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-
-interface Roleplay {
-  _id: string;
-  name: string;
-  description: string;
-  image: string;
-}
+import { Roleplay } from '@/types/roleplay';
 
 export function useRoleplaySearch(roleplays: Roleplay[]) {
   const [searchQuery, setSearchQuery] = useState('');

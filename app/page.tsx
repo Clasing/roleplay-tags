@@ -1,12 +1,6 @@
 import PageHeader from '@/components/layout/PageHeader';
 import RoleplayList from '@/components/roleplay/RoleplayList';
-
-interface Roleplay {
-  _id: string;
-  name: string;
-  description: string;
-  image: string;
-}
+import { Roleplay } from '@/types/roleplay';
 
 async function getRoleplays(): Promise<Roleplay[]> {
   try {
@@ -20,7 +14,19 @@ async function getRoleplays(): Promise<Roleplay[]> {
       throw new Error('Error al obtener roleplays');
     }
     
-    return res.json();
+    const data = await res.json();
+    const normalizedRoleplays = data
+      .map((roleplay: Roleplay & { id?: string }) => {
+        const normalizedId = roleplay._id || roleplay.id;
+        if (!normalizedId) return null;
+        return {
+          ...roleplay,
+          _id: normalizedId,
+        } satisfies Roleplay;
+      })
+      .filter((roleplay: Roleplay | null): roleplay is Roleplay => roleplay !== null);
+
+    return normalizedRoleplays;
   } catch (error) {
     console.error('Error fetching roleplays:', error);
     return [];

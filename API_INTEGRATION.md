@@ -149,7 +149,7 @@ Content-Type: application/json
 {
   "rolePlayId": "123e4567-e89b-12d3-a456-426614174000",
   "language": "880e8400-e29b-41d4-a716-446655440000",
-  "theme": "Daily Routines",
+  "theme": ["Daily Routines", "Workplace Conversations"],
   "skillMain": ["550e8400-e29b-41d4-a716-446655440000"],
   "subSkill": ["660e8400-e29b-41d4-a716-446655440000", "660e8400-e29b-41d4-a716-446655440001"],
   "grammar": ["770e8400-e29b-41d4-a716-446655440000"],
@@ -219,7 +219,7 @@ Cuando el usuario hace clic en "Save":
    const payload: ActivityPayload = {
      rolePlayId: roleplay._id,
      language: languageId,
-     theme: theme,
+     theme: themes,
      skillMain: skillIds,
      subSkill: subSkillIds,
      grammar: grammarIds,
