@@ -36,15 +36,16 @@ export interface Language {
   language: string;
 }
 
-export interface VocabularySet {
+export interface Vocabulary {
   id: string;
-  vocabulary: string[];
-  subVocabulary: string[];
+  value: string;
 }
 
-export interface CreateVocabularyPayload {
-  vocabulary: string[];
-  subVocabulary: string[];
+export interface SubVocabulary {
+  id: string;
+  value: string;
+  vocabularyId: string;
+  vocabulary?: string;
 }
 
 export interface RoleplayActivity {
@@ -267,11 +268,11 @@ export async function createActivity(payload: ActivityPayload): Promise<boolean>
   }
 }
 
-export async function getVocabularies(): Promise<VocabularySet[]> {
+export async function getVocabularies(): Promise<Vocabulary[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies`);
     if (!response.ok) throw new Error('Error al obtener vocabularios');
-    const data: VocabularySet[] = await response.json();
+    const data: Vocabulary[] = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching vocabularies:', error);
@@ -279,25 +280,42 @@ export async function getVocabularies(): Promise<VocabularySet[]> {
   }
 }
 
-export async function createVocabulary(payload: CreateVocabularyPayload): Promise<VocabularySet | null> {
+export async function getSubVocabularies(): Promise<SubVocabulary[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies`);
+    if (!response.ok) throw new Error('Error al obtener sub-vocabularios');
+    const data: SubVocabulary[] = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching sub-vocabularies:', error);
+    return [];
+  }
+}
+
+export async function createVocabulary(value: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ value }),
     });
-
-    if (!response.ok) {
-      throw new Error('Error al crear vocabulario');
-    }
-
-    const responseText = await response.text();
-    if (!responseText) {
-      return null;
-    }
-    return JSON.parse(responseText) as VocabularySet;
+    return response.ok;
   } catch (error) {
     console.error('Error creating vocabulary:', error);
-    return null;
+    return false;
+  }
+}
+
+export async function createSubVocabulary(value: string, vocabularyId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, vocabularyId }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error creating sub-vocabulary:', error);
+    return false;
   }
 }

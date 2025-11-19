@@ -12,13 +12,16 @@ import {
   createGrammarType,
   createSubGrammarType,
   getVocabularies,
+  getSubVocabularies,
   createVocabulary,
+  createSubVocabulary,
   type Skill,
   type SubSkill,
   type GrammarType,
   type SubGrammarType,
   type Language,
-  type VocabularySet
+  type Vocabulary,
+  type SubVocabulary
 } from '@/lib/api/skillsApi';
 
 interface TagAdminModalProps {
@@ -44,10 +47,15 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const [selectedLanguageForGrammar, setSelectedLanguageForGrammar] = useState<string>('');
   
   // Vocabulary state
-  const [vocabularies, setVocabularies] = useState<VocabularySet[]>([]);
+  const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
+  const [subVocabularies, setSubVocabularies] = useState<SubVocabulary[]>([]);
+  const [selectedVocabulary, setSelectedVocabulary] = useState<string>('');
   const [isAddingVocabulary, setIsAddingVocabulary] = useState(false);
-  const [newVocabularyItems, setNewVocabularyItems] = useState<string[]>(['']);
-  const [newSubVocabularyItems, setNewSubVocabularyItems] = useState<string[]>(['']);
+  const [isAddingSubVocabulary, setIsAddingSubVocabulary] = useState(false);
+  const [newVocabularyValue, setNewVocabularyValue] = useState('');
+  const [newSubVocabularyValue, setNewSubVocabularyValue] = useState('');
+  const [searchVocabulary, setSearchVocabulary] = useState('');
+  const [searchSubVocabulary, setSearchSubVocabulary] = useState('');
   
   // Add new states
   const [isAddingSkill, setIsAddingSkill] = useState(false);
@@ -66,13 +74,14 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const [searchSubGrammar, setSearchSubGrammar] = useState('');
 
   const loadData = async () => {
-    const [skillsData, subSkillsData, grammarData, subGrammarData, languagesData, vocabulariesData] = await Promise.all([
+    const [skillsData, subSkillsData, grammarData, subGrammarData, languagesData, vocabulariesData, subVocabulariesData] = await Promise.all([
       getSkills(),
       getSubSkills(),
       getGrammarTypes(),
       getSubGrammarTypes(),
       getLanguages(),
-      getVocabularies()
+      getVocabularies(),
+      getSubVocabularies()
     ]);
     
     setSkills(skillsData);
@@ -81,6 +90,7 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
     setSubGrammarTypes(subGrammarData);
     setLanguages(languagesData);
     setVocabularies(vocabulariesData);
+    setSubVocabularies(subVocabulariesData);
   };
 
   useEffect(() => {
@@ -107,6 +117,14 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
       sub.language === selectedLanguageForGrammar;
     const matchesSearch = sub.value.toLowerCase().includes(searchSubGrammar.toLowerCase());
     return matchesGrammar && matchesLanguage && matchesSearch;
+  });
+
+  const filteredSubVocabularies = subVocabularies.filter(sub => {
+    const selectedVocabularyId = vocabularies.find(v => v.value === selectedVocabulary)?.id;
+    const subVocabParent = (sub as unknown as { vocabulary?: string }).vocabulary ?? sub.vocabularyId;
+    const matchesVocabulary = !selectedVocabularyId || subVocabParent === selectedVocabularyId;
+    const matchesSearch = sub.value.toLowerCase().includes(searchSubVocabulary.toLowerCase());
+    return matchesVocabulary && matchesSearch;
   });
 
   const handleAddSkill = async () => {
@@ -164,23 +182,25 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   };
 
   const handleAddVocabulary = async () => {
-    const vocabulary = newVocabularyItems.filter(item => item.trim() !== '');
-    const subVocabulary = newSubVocabularyItems.filter(item => item.trim() !== '');
-    
-    if (vocabulary.length === 0) {
-      alert('Debes agregar al menos un término de vocabulario');
-      return;
-    }
-    
-    const result = await createVocabulary({ vocabulary, subVocabulary });
-    if (result) {
-      setNewVocabularyItems(['']);
-      setNewSubVocabularyItems(['']);
+    if (!newVocabularyValue.trim()) return;
+    const success = await createVocabulary(newVocabularyValue.trim());
+    if (success) {
+      setNewVocabularyValue('');
       setIsAddingVocabulary(false);
       await loadData();
-      alert('Vocabulario creado exitosamente');
-    } else {
-      alert('Error al crear el vocabulario');
+    }
+  };
+
+  const handleAddSubVocabulary = async () => {
+    if (!newSubVocabularyValue.trim() || !selectedVocabulary) return;
+    const vocabularyId = vocabularies.find(v => v.value === selectedVocabulary)?.id;
+    if (!vocabularyId) return;
+    
+    const success = await createSubVocabulary(newSubVocabularyValue.trim(), vocabularyId);
+    if (success) {
+      setNewSubVocabularyValue('');
+      setIsAddingSubVocabulary(false);
+      await loadData();
     }
   };
 
@@ -292,119 +312,48 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white to-gray-50 p-4 pb-16 dark:from-black dark:to-zinc-950 sm:p-6 lg:p-8">
           {activeTab === 'vocabularies' ? (
-            /* Vocabularies Tab */
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold tracking-tight text-black dark:text-white">Vocabularios</h3>
-                <button
-                  onClick={() => setIsAddingVocabulary(true)}
-                  className="group flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-black transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-800 dark:bg-black dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Nuevo Vocabulario</span>
-                </button>
-              </div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Left: Vocabulary Main */}
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold tracking-tight text-black dark:text-white">Vocabulary Main</h3>
+                  <button
+                    onClick={() => setIsAddingVocabulary(true)}
+                    className="group flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-black transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-800 dark:bg-black dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Nuevo</span>
+                  </button>
+                </div>
 
-              {/* Add new vocabulary form */}
-              {isAddingVocabulary && (
-                <div className="rounded-2xl border-2 border-black bg-white p-5 dark:border-white dark:bg-black">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mb-3 block text-sm font-semibold text-black dark:text-white">
-                        Términos de Vocabulario <span className="text-red-500">*</span>
-                      </label>
-                      <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                        Agrega los términos principales del vocabulario (ej: book, pen, desk)
-                      </p>
-                      {newVocabularyItems.map((item, index) => (
-                        <div key={index} className="mb-2 flex gap-2">
-                          <input
-                            type="text"
-                            value={item}
-                            onChange={(e) => {
-                              const updated = [...newVocabularyItems];
-                              updated[index] = e.target.value;
-                              setNewVocabularyItems(updated);
-                            }}
-                            placeholder="Término de vocabulario"
-                            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
-                          />
-                          {newVocabularyItems.length > 1 && (
-                            <button
-                              onClick={() => {
-                                const updated = newVocabularyItems.filter((_, i) => i !== index);
-                                setNewVocabularyItems(updated);
-                              }}
-                              className="rounded-lg border border-gray-300 bg-white px-3 text-gray-500 transition-colors hover:border-red-500 hover:bg-red-50 hover:text-red-500 dark:border-zinc-700 dark:bg-black dark:hover:border-red-500 dark:hover:bg-red-950"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => setNewVocabularyItems([...newVocabularyItems, ''])}
-                        className="mt-2 text-sm text-black underline hover:no-underline dark:text-white"
-                      >
-                        + Agregar término
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="mb-3 block text-sm font-semibold text-black dark:text-white">
-                        Ejemplos / Frases
-                      </label>
-                      <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                        Agrega frases de ejemplo (ej: &quot;I have a book&quot;, &quot;Where is my pen?&quot;)
-                      </p>
-                      {newSubVocabularyItems.map((item, index) => (
-                        <div key={index} className="mb-2 flex gap-2">
-                          <input
-                            type="text"
-                            value={item}
-                            onChange={(e) => {
-                              const updated = [...newSubVocabularyItems];
-                              updated[index] = e.target.value;
-                              setNewSubVocabularyItems(updated);
-                            }}
-                            placeholder="Frase de ejemplo"
-                            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
-                          />
-                          {newSubVocabularyItems.length > 1 && (
-                            <button
-                              onClick={() => {
-                                const updated = newSubVocabularyItems.filter((_, i) => i !== index);
-                                setNewSubVocabularyItems(updated);
-                              }}
-                              className="rounded-lg border border-gray-300 bg-white px-3 text-gray-500 transition-colors hover:border-red-500 hover:bg-red-50 hover:text-red-500 dark:border-zinc-700 dark:bg-black dark:hover:border-red-500 dark:hover:bg-red-950"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => setNewSubVocabularyItems([...newSubVocabularyItems, ''])}
-                        className="mt-2 text-sm text-black underline hover:no-underline dark:text-white"
-                      >
-                        + Agregar frase
-                      </button>
-                    </div>
-
+                {/* Add new vocabulary form */}
+                {isAddingVocabulary && (
+                  <div className="rounded-2xl border-2 border-black bg-white p-5 dark:border-white dark:bg-black">
+                    <label className="mb-3 block text-sm font-semibold text-black dark:text-white">
+                      Nuevo Vocabulary Main
+                    </label>
+                    <input
+                      type="text"
+                      value={newVocabularyValue}
+                      onChange={(e) => setNewVocabularyValue(e.target.value)}
+                      placeholder="Ej: Business Meeting, Daily Routines..."
+                      className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddVocabulary()}
+                      autoFocus
+                    />
                     <div className="flex gap-2">
                       <button
                         onClick={handleAddVocabulary}
                         className="flex-1 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                       >
-                        Guardar Vocabulario
+                        Guardar
                       </button>
                       <button
                         onClick={() => {
                           setIsAddingVocabulary(false);
-                          setNewVocabularyItems(['']);
-                          setNewSubVocabularyItems(['']);
+                          setNewVocabularyValue('');
                         }}
                         className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-all hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-black dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-900"
                       >
@@ -412,67 +361,158 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Vocabularies list */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {vocabularies.length === 0 ? (
-                  <div className="col-span-full py-12 text-center">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-300 dark:text-zinc-700"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                      />
-                    </svg>
-                    <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-                      No hay vocabularios creados. Crea uno nuevo para comenzar.
-                    </p>
-                  </div>
-                ) : (
-                  vocabularies.map((vocab) => (
-                    <div
-                      key={vocab.id}
-                      className="rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:border-black dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-white"
-                    >
-                      <div className="space-y-3">
-                        <div>
-                          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                            Vocabulario
-                          </div>
-                          <ul className="space-y-1">
-                            {vocab.vocabulary.map((item, idx) => (
-                              <li key={idx} className="text-sm text-black dark:text-white">
-                                • {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        {vocab.subVocabulary.length > 0 && (
-                          <div>
-                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                              Ejemplos
-                            </div>
-                            <ul className="space-y-1">
-                              {vocab.subVocabulary.map((item, idx) => (
-                                <li key={idx} className="text-sm italic text-gray-600 dark:text-gray-300">
-                                  &ldquo;{item}&rdquo;
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
                 )}
+
+                {/* Search vocabularies */}
+                <div className="relative">
+                  <svg
+                    className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchVocabulary}
+                    onChange={(e) => setSearchVocabulary(e.target.value)}
+                    placeholder="Buscar..."
+                    className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-11 pr-4 text-sm text-black placeholder:text-gray-400 transition-all focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
+                  />
+                </div>
+
+                {/* Vocabularies list */}
+                <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  {vocabularies
+                    .filter(vocab => vocab.value.toLowerCase().includes(searchVocabulary.toLowerCase()))
+                    .map(vocab => (
+                      <button
+                        key={vocab.id}
+                        onClick={() => setSelectedVocabulary(vocab.value)}
+                        className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
+                          selectedVocabulary === vocab.value
+                            ? 'bg-black text-white dark:bg-white dark:text-black'
+                            : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{vocab.value}</span>
+                          {selectedVocabulary === vocab.value && (
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {/* Right: Sub Vocabularies */}
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold tracking-tight text-black dark:text-white">Sub Vocabularies</h3>
+                  <button
+                    onClick={() => setIsAddingSubVocabulary(true)}
+                    disabled={!selectedVocabulary}
+                    className="group flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-black transition-all hover:border-black hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:bg-black dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Nuevo</span>
+                  </button>
+                </div>
+
+                {/* Add new sub vocabulary form */}
+                {isAddingSubVocabulary && (
+                  <div className="rounded-2xl border-2 border-black bg-white p-5 dark:border-white dark:bg-black">
+                    <label className="mb-3 block text-sm font-semibold text-black dark:text-white">
+                      Nuevo Sub Vocabulary para: <span className="underline decoration-2 underline-offset-2">{selectedVocabulary}</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newSubVocabularyValue}
+                      onChange={(e) => setNewSubVocabularyValue(e.target.value)}
+                      placeholder="Ej: Icebreaker, Agenda review..."
+                      className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddSubVocabulary()}
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleAddSubVocabulary}
+                        className="flex-1 rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAddingSubVocabulary(false);
+                          setNewSubVocabularyValue('');
+                        }}
+                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-all hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-black dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-900"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Search sub vocabularies */}
+                <div className="relative">
+                  <svg
+                    className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchSubVocabulary}
+                    onChange={(e) => setSearchSubVocabulary(e.target.value)}
+                    placeholder="Buscar..."
+                    className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-11 pr-4 text-sm text-black placeholder:text-gray-400 transition-all focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
+                  />
+                </div>
+
+                {/* Sub vocabularies list */}
+                <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  {filteredSubVocabularies.length > 0 ? (
+                    filteredSubVocabularies.map(subVocab => (
+                      <div
+                        key={subVocab.id}
+                        className="rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                      >
+                        <span className="text-sm font-medium text-black dark:text-white">
+                          {subVocab.value}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-12 text-center">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-300 dark:text-zinc-700"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                        />
+                      </svg>
+                      <p className="mt-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {selectedVocabulary ? 'No hay sub vocabularies para este filtro' : 'Selecciona un vocabulary main'}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : activeTab === 'skills' ? (

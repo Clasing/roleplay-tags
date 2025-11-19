@@ -18,8 +18,9 @@ import {
   Language,
   ActivityPayload,
   getVocabularies,
-  VocabularySet,
-  createVocabulary,
+  getSubVocabularies,
+  Vocabulary,
+  SubVocabulary,
 } from '@/lib/api/skillsApi';
 
 interface TagsFormData {
@@ -46,7 +47,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [availableSubgrammar, setAvailableSubgrammar] = useState<SubGrammarType[]>([]);
   const [allSubgrammar, setAllSubgrammar] = useState<SubGrammarType[]>([]);
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
-  const [availableVocabularies, setAvailableVocabularies] = useState<VocabularySet[]>([]);
+  const [availableVocabularies, setAvailableVocabularies] = useState<Vocabulary[]>([]);
+  const [availableSubVocabularies, setAvailableSubVocabularies] = useState<SubVocabulary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [themes, setThemes] = useState<string[]>(roleplay.name ? [roleplay.name] : []);
@@ -57,10 +59,6 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedGrammar, setSelectedGrammar] = useState<string[]>([]);
   const [selectedSubgrammar, setSelectedSubgrammar] = useState<string[]>([]);
   const [selectedVocabularyId, setSelectedVocabularyId] = useState<string>('');
-  const [newVocabularyInput, setNewVocabularyInput] = useState('');
-  const [newSubVocabularyInput, setNewSubVocabularyInput] = useState('');
-  const [isCreatingVocabulary, setIsCreatingVocabulary] = useState(false);
-  const [createVocabularyError, setCreateVocabularyError] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -77,13 +75,14 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setDuration(30);
       
       // Cargar datos básicos
-      const [skills, subSkills, grammar, subgrammar, languages, vocabularies] = await Promise.all([
+      const [skills, subSkills, grammar, subgrammar, languages, vocabularies, subVocabularies] = await Promise.all([
         getSkills(),
         getSubSkills(),
         getGrammarTypes(),
         getSubGrammarTypes(),
         getLanguages(),
         getVocabularies(),
+        getSubVocabularies(),
       ]);
 
       // Cargar actividad solo si existe un roleplayId válido
@@ -100,6 +99,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setAllSubgrammar(subgrammar);
       setAvailableLanguages(languages);
       setAvailableVocabularies(vocabularies);
+      setAvailableSubVocabularies(subVocabularies);
 
       // Si existe actividad, cargar los tags existentes
       if (activity) {
@@ -220,56 +220,6 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
 
   const handleRemoveTheme = (themeValue: string) => {
     setThemes((prev) => prev.filter((item) => item !== themeValue));
-  };
-
-  const parseListInput = (value: string) =>
-    value
-      .split(/[,\n]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-  const handleCreateVocabulary = async () => {
-    const vocabularyList = parseListInput(newVocabularyInput);
-    const subVocabularyList = parseListInput(newSubVocabularyInput);
-
-    if (vocabularyList.length === 0) {
-      setCreateVocabularyError('Agrega al menos una palabra principal.');
-      return;
-    }
-
-    if (subVocabularyList.length === 0) {
-      setCreateVocabularyError('Agrega al menos un ejemplo o frase.');
-      return;
-    }
-
-    setCreateVocabularyError('');
-    setIsCreatingVocabulary(true);
-
-    try {
-      const created = await createVocabulary({
-        vocabulary: vocabularyList,
-        subVocabulary: subVocabularyList,
-      });
-
-      if (!created) {
-        alert('No se pudo crear el vocabulario');
-        return;
-      }
-
-      alert('Vocabulario creado exitosamente');
-      setNewVocabularyInput('');
-      setNewSubVocabularyInput('');
-      const updated = await getVocabularies();
-      setAvailableVocabularies(updated);
-      if (created.id) {
-        setSelectedVocabularyId(created.id);
-      }
-    } catch (error) {
-      console.error('Error creating vocabulary:', error);
-      alert('Error al crear el vocabulario');
-    } finally {
-      setIsCreatingVocabulary(false);
-    }
   };
 
   const handleSave = async () => {
@@ -487,6 +437,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
             <div className="grid gap-4 md:grid-cols-2">
               {availableVocabularies.map((vocab) => {
                 const isSelected = selectedVocabularyId === vocab.id;
+                const subVocabs = availableSubVocabularies.filter(sv => sv.vocabularyId === vocab.id);
                 return (
                   <button
                     type="button"
@@ -500,87 +451,26 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
                   >
                     <div className="space-y-2">
                       <div className="text-sm font-semibold uppercase tracking-wide">
-                        Vocabulary
+                        {vocab.value}
                       </div>
-                      <ul className={`space-y-1 text-sm ${isSelected ? 'text-white dark:text-black' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {vocab.vocabulary.map((item) => (
-                          <li key={item}>• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="text-sm font-semibold uppercase tracking-wide">
-                        Ejemplos
-                      </div>
-                      <ul className={`space-y-1 text-sm italic ${isSelected ? 'text-white/80 dark:text-black/80' : 'text-gray-600 dark:text-gray-400'}`}>
-                        {vocab.subVocabulary.map((item) => (
-                          <li key={item}>&ldquo;{item}&rdquo;</li>
-                        ))}
-                      </ul>
+                      {subVocabs.length > 0 && (
+                        <>
+                          <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
+                            Sub-Vocabularios
+                          </div>
+                          <ul className={`space-y-1 text-sm ${isSelected ? 'text-white/90 dark:text-black/90' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {subVocabs.map((subVocab) => (
+                              <li key={subVocab.id}>• {subVocab.value}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
                     </div>
                   </button>
                 );
               })}
             </div>
           )}
-        </div>
-
-        <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-black dark:text-white">
-              Crear nuevo vocabulario
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Escribe cada elemento separado por coma o salto de línea, luego guarda el set.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                Palabras principales
-              </label>
-              <textarea
-                value={newVocabularyInput}
-                onChange={(e) => setNewVocabularyInput(e.target.value)}
-                placeholder="Ej: Shopping, Groceries, Checkout"
-                rows={4}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 transition-colors focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-zinc-800 dark:bg-black dark:text-white"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Estas palabras se mostrarán como vocabulario principal.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                Ejemplos o frases
-              </label>
-              <textarea
-                value={newSubVocabularyInput}
-                onChange={(e) => setNewSubVocabularyInput(e.target.value)}
-                placeholder="Ej: I need to pay at the cashier."
-                rows={4}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 transition-colors focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-zinc-800 dark:bg-black dark:text-white"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Proporciona ejemplos o frases que acompañen el vocabulario.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={handleCreateVocabulary}
-              disabled={isCreatingVocabulary}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-gray-100"
-            >
-              {isCreatingVocabulary ? 'Creando vocabulario...' : 'Guardar vocabulario'}
-            </button>
-            {createVocabularyError && (
-              <p className="text-sm text-red-500">{createVocabularyError}</p>
-            )}
-          </div>
         </div>
 
         <button
