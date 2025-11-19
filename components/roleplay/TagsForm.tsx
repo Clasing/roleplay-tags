@@ -42,6 +42,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [availableSubSkills, setAvailableSubSkills] = useState<SubSkill[]>([]);
   const [allSubSkills, setAllSubSkills] = useState<SubSkill[]>([]);
   const [availableGrammar, setAvailableGrammar] = useState<GrammarType[]>([]);
+  const [allGrammar, setAllGrammar] = useState<GrammarType[]>([]);
   const [availableSubgrammar, setAvailableSubgrammar] = useState<SubGrammarType[]>([]);
   const [allSubgrammar, setAllSubgrammar] = useState<SubGrammarType[]>([]);
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
@@ -95,6 +96,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setAvailableSkills(skills);
       setAllSubSkills(subSkills);
       setAvailableGrammar(grammar);
+      setAllGrammar(grammar);
       setAllSubgrammar(subgrammar);
       setAvailableLanguages(languages);
       setAvailableVocabularies(vocabularies);
@@ -172,6 +174,13 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return languageMatch && skillMatch;
       });
 
+      const filteredGrammar = allGrammar.filter(grammar => {
+        const grammarLanguage = grammar.language;
+        // Filter by language
+        const languageMatch = !grammarLanguage || grammarLanguage === defaultLangId || grammarLanguage === languageId;
+        return languageMatch;
+      });
+
       const filteredSubgrammar = allSubgrammar.filter(subGrammar => {
         const subGrammarLanguage = (subGrammar as unknown as { language?: string; languageId?: string }).language ?? (subGrammar as unknown as { languageId?: string }).languageId;
         const subGrammarParent = (subGrammar as unknown as { grammar?: string }).grammar;
@@ -185,15 +194,18 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       });
 
       setAvailableSubSkills(filteredSubSkills);
+      setAvailableGrammar(filteredGrammar);
       setAvailableSubgrammar(filteredSubgrammar);
 
       setSelectedSubSkills(prev => prev.filter(value => filteredSubSkills.some(item => item.value === value)));
+      setSelectedGrammar(prev => prev.filter(value => filteredGrammar.some(item => item.value === value)));
       setSelectedSubgrammar(prev => prev.filter(value => filteredSubgrammar.some(item => item.value === value)));
     } else {
       setAvailableSubSkills(allSubSkills);
+      setAvailableGrammar(allGrammar);
       setAvailableSubgrammar(allSubgrammar);
     }
-  }, [getSelectedLanguageId, allSubSkills, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, availableSkills, availableGrammar]);
+  }, [getSelectedLanguageId, allSubSkills, allGrammar, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, availableSkills, availableGrammar]);
 
   useEffect(() => {
     applyLanguageFilters();

@@ -36,13 +36,12 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [subSkills, setSubSkills] = useState<SubSkill[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<string>('');
-  const [selectedLanguageForSubSkill, setSelectedLanguageForSubSkill] = useState<string>('');
   
   // Grammar state
   const [grammarTypes, setGrammarTypes] = useState<GrammarType[]>([]);
   const [subGrammarTypes, setSubGrammarTypes] = useState<SubGrammarType[]>([]);
   const [selectedGrammar, setSelectedGrammar] = useState<string>('');
-  const [selectedLanguageForSubGrammar, setSelectedLanguageForSubGrammar] = useState<string>('');
+  const [selectedLanguageForGrammar, setSelectedLanguageForGrammar] = useState<string>('');
   
   // Vocabulary state
   const [vocabularies, setVocabularies] = useState<VocabularySet[]>([]);
@@ -96,19 +95,16 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const filteredSubSkills = subSkills.filter(sub => {
     const selectedSkillId = skills.find(s => s.value === selectedSkill)?.id;
     const matchesSkill = !selectedSkillId || sub.skill === selectedSkillId;
-    const matchesLanguage = !selectedLanguageForSubSkill || 
-      sub.languageId === selectedLanguageForSubSkill || 
-      sub.language === selectedLanguageForSubSkill;
     const matchesSearch = sub.value.toLowerCase().includes(searchSubSkill.toLowerCase());
-    return matchesSkill && matchesLanguage && matchesSearch;
+    return matchesSkill && matchesSearch;
   });
 
   const filteredSubGrammar = subGrammarTypes.filter(sub => {
     const selectedGrammarId = grammarTypes.find(g => g.value === selectedGrammar)?.id;
     const matchesGrammar = !selectedGrammarId || sub.grammar === selectedGrammarId;
-    const matchesLanguage = !selectedLanguageForSubGrammar || 
-      sub.languageId === selectedLanguageForSubGrammar || 
-      sub.language === selectedLanguageForSubGrammar;
+    const matchesLanguage = !selectedLanguageForGrammar || 
+      sub.languageId === selectedLanguageForGrammar || 
+      sub.language === selectedLanguageForGrammar;
     const matchesSearch = sub.value.toLowerCase().includes(searchSubGrammar.toLowerCase());
     return matchesGrammar && matchesLanguage && matchesSearch;
   });
@@ -124,11 +120,11 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   };
 
   const handleAddSubSkill = async () => {
-    if (!newSubSkillValue.trim() || !selectedSkill || !selectedLanguageForSubSkill) return;
+    if (!newSubSkillValue.trim() || !selectedSkill) return;
     const skillId = skills.find(s => s.value === selectedSkill)?.id;
     if (!skillId) return;
     
-    const success = await createSubSkill(newSubSkillValue.trim(), skillId, selectedLanguageForSubSkill);
+    const success = await createSubSkill(newSubSkillValue.trim(), skillId);
     if (success) {
       setNewSubSkillValue('');
       setIsAddingSubSkill(false);
@@ -138,9 +134,11 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
 
   const handleAddGrammar = async () => {
     if (!newGrammarValue.trim()) return;
-    // Usar el primer idioma disponible o un ID por defecto
-    const defaultLangId = languages.find(l => l.language.toUpperCase() === 'DEFAULT')?.id || languages[0]?.id || '';
-    const success = await createGrammarType(newGrammarValue.trim(), defaultLangId);
+    if (!selectedLanguageForGrammar) {
+      alert('Por favor selecciona un idioma');
+      return;
+    }
+    const success = await createGrammarType(newGrammarValue.trim(), selectedLanguageForGrammar);
     if (success) {
       setNewGrammarValue('');
       setIsAddingGrammar(false);
@@ -149,11 +147,15 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   };
 
   const handleAddSubGrammar = async () => {
-    if (!newSubGrammarValue.trim() || !selectedGrammar || !selectedLanguageForSubGrammar) return;
+    if (!newSubGrammarValue.trim() || !selectedGrammar) return;
+    if (!selectedLanguageForGrammar) {
+      alert('Por favor selecciona un idioma');
+      return;
+    }
     const grammarId = grammarTypes.find(g => g.value === selectedGrammar)?.id;
     if (!grammarId) return;
     
-    const success = await createSubGrammarType(newSubGrammarValue.trim(), grammarId, selectedLanguageForSubGrammar);
+    const success = await createSubGrammarType(newSubGrammarValue.trim(), grammarId, selectedLanguageForGrammar);
     if (success) {
       setNewSubGrammarValue('');
       setIsAddingSubGrammar(false);
@@ -602,21 +604,6 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                       onKeyDown={(e) => e.key === 'Enter' && handleAddSubSkill()}
                       autoFocus
                     />
-                    <label className="mb-2 block text-sm font-semibold text-black dark:text-white">
-                      Idioma <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedLanguageForSubSkill}
-                      onChange={(e) => setSelectedLanguageForSubSkill(e.target.value)}
-                      className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                    >
-                      <option value="">Seleccionar idioma</option>
-                      {languages.map(lang => (
-                        <option key={lang.id} value={lang.id}>
-                          {lang.language}
-                        </option>
-                      ))}
-                    </select>
                     <div className="flex gap-2">
                       <button
                         onClick={handleAddSubSkill}
@@ -636,25 +623,6 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                     </div>
                   </div>
                 )}
-
-                {/* Language filter for sub skills */}
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-black dark:text-white">
-                    Filtrar por idioma
-                  </label>
-                  <select
-                    value={selectedLanguageForSubSkill}
-                    onChange={(e) => setSelectedLanguageForSubSkill(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  >
-                    <option value="">Todos los idiomas</option>
-                    {languages.map(lang => (
-                      <option key={lang.id} value={lang.id}>
-                        {lang.language}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* Search sub skills */}
                 <div className="relative">
@@ -678,22 +646,16 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 {/* Sub skills list */}
                 <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                   {filteredSubSkills.length > 0 ? (
-                    filteredSubSkills.map(subSkill => {
-                      const language = languages.find(l => l.id === subSkill.languageId || l.id === subSkill.language);
-                      return (
-                        <div
-                          key={subSkill.id}
-                          className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                        >
-                          <span className="text-sm font-medium text-black dark:text-white">
-                            {subSkill.value}
-                          </span>
-                          <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-gray-300">
-                            {language?.language || 'Sin idioma'}
-                          </span>
-                        </div>
-                      );
-                    })
+                    filteredSubSkills.map(subSkill => (
+                      <div
+                        key={subSkill.id}
+                        className="rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                      >
+                        <span className="text-sm font-medium text-black dark:text-white">
+                          {subSkill.value}
+                        </span>
+                      </div>
+                    ))
                   ) : (
                     <div className="py-12 text-center">
                       <svg
@@ -718,7 +680,30 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              {/* General Language Selector */}
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+                <label className="mb-3 block text-sm font-semibold text-black dark:text-white">
+                  Seleccionar Idioma <span className="text-red-500">*</span>
+                </label>
+                <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                  Este idioma se aplicará tanto a las Grammar principales como a las Sub Grammar que crees.
+                </p>
+                <select
+                  value={selectedLanguageForGrammar}
+                  onChange={(e) => setSelectedLanguageForGrammar(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                >
+                  <option value="">Seleccionar idioma</option>
+                  {languages.map(lang => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.language}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Left: Grammar Main */}
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
@@ -837,6 +822,9 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                     <label className="mb-3 block text-sm font-semibold text-black dark:text-white">
                       Nuevo Sub Grammar para: <span className="underline decoration-2 underline-offset-2">{selectedGrammar}</span>
                     </label>
+                    <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                      Se usará el idioma seleccionado arriba: <strong>{languages.find(l => l.id === selectedLanguageForGrammar)?.language || 'Ninguno'}</strong>
+                    </p>
                     <input
                       type="text"
                       value={newSubGrammarValue}
@@ -846,21 +834,6 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                       onKeyDown={(e) => e.key === 'Enter' && handleAddSubGrammar()}
                       autoFocus
                     />
-                    <label className="mb-2 block text-sm font-semibold text-black dark:text-white">
-                      Idioma <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={selectedLanguageForSubGrammar}
-                      onChange={(e) => setSelectedLanguageForSubGrammar(e.target.value)}
-                      className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                    >
-                      <option value="">Seleccionar idioma</option>
-                      {languages.map(lang => (
-                        <option key={lang.id} value={lang.id}>
-                          {lang.language}
-                        </option>
-                      ))}
-                    </select>
                     <div className="flex gap-2">
                       <button
                         onClick={handleAddSubGrammar}
@@ -880,25 +853,6 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                     </div>
                   </div>
                 )}
-
-                {/* Language filter for sub grammar */}
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-black dark:text-white">
-                    Filtrar por idioma
-                  </label>
-                  <select
-                    value={selectedLanguageForSubGrammar}
-                    onChange={(e) => setSelectedLanguageForSubGrammar(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                  >
-                    <option value="">Todos los idiomas</option>
-                    {languages.map(lang => (
-                      <option key={lang.id} value={lang.id}>
-                        {lang.language}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* Search sub grammar */}
                 <div className="relative">
@@ -960,6 +914,7 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                   )}
                 </div>
               </div>
+            </div>
             </div>
           )}
         </div>

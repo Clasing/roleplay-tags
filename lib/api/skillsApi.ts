@@ -171,12 +171,12 @@ export async function getSubSkills(): Promise<SubSkill[]> {
   }
 }
 
-export async function createSubSkill(value: string, skillId: string, languageId: string): Promise<boolean> {
+export async function createSubSkill(value: string, skillId: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-skills`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value, skillId, languageId }),
+      body: JSON.stringify({ value, skillId }),
     });
     return response.ok;
   } catch (error) {
@@ -198,12 +198,12 @@ export async function getGrammarTypes(): Promise<GrammarType[]> {
   }
 }
 
-export async function createGrammarType(value: string, languageId: string): Promise<boolean> {
+export async function createGrammarType(value: string, languageId?: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/grammar-types`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value, languageId }),
+      body: JSON.stringify({ value, languageId: languageId || null }),
     });
     return response.ok;
   } catch (error) {
