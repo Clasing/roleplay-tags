@@ -58,7 +58,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedSubSkills, setSelectedSubSkills] = useState<string[]>([]);
   const [selectedGrammar, setSelectedGrammar] = useState<string[]>([]);
   const [selectedSubgrammar, setSelectedSubgrammar] = useState<string[]>([]);
-  const [selectedVocabularyId, setSelectedVocabularyId] = useState<string>('');
+  const [selectedVocabularies, setSelectedVocabularies] = useState<string[]>([]);
+  const [selectedSubVocabularies, setSelectedSubVocabularies] = useState<string[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -69,9 +70,10 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setSelectedSubSkills([]);
       setSelectedGrammar([]);
       setSelectedSubgrammar([]);
+      setSelectedVocabularies([]);
+      setSelectedSubVocabularies([]);
       setThemes(roleplay.name ? [roleplay.name] : []);
       setNewThemeInput('');
-      setSelectedVocabularyId('');
       setDuration(30);
       
       // Cargar datos básicos
@@ -125,6 +127,9 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         setSelectedGrammar(grammarValues);
         setSelectedSubgrammar(subGrammarValues);
         
+        // TODO: Load vocabulary and sub-vocabulary selections when backend supports it
+        // For now, vocabularies are stored differently in the activity
+        
         if (activity.theme) {
           const incomingThemes = Array.isArray(activity.theme)
             ? activity.theme.filter(Boolean)
@@ -132,9 +137,6 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
           if (incomingThemes.length > 0) {
             setThemes(incomingThemes);
           }
-        }
-        if (activity.vocabularyI) {
-          setSelectedVocabularyId(activity.vocabularyI);
         }
         if (activity.durationAprox) setDuration(activity.durationAprox);
       }
@@ -155,11 +157,14 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     return availableLanguages.find(l => l.language.toUpperCase() === normalized)?.id;
   }, [selectedLanguage, availableLanguages]);
 
+  const [availableFilteredSubVocabularies, setAvailableFilteredSubVocabularies] = useState<SubVocabulary[]>([]);
+
   const applyLanguageFilters = useCallback(() => {
     const languageId = getSelectedLanguageId();
     const defaultLangId = defaultLanguage?.id;
     const selectedSkillIds = selectedSkills.map(skillValue => availableSkills.find(s => s.value === skillValue)?.id).filter(Boolean) as string[];
     const selectedGrammarIds = selectedGrammar.map(grammarValue => availableGrammar.find(g => g.value === grammarValue)?.id).filter(Boolean) as string[];
+    const selectedVocabularyIds = selectedVocabularies.map(vocabValue => availableVocabularies.find(v => v.value === vocabValue)?.id).filter(Boolean) as string[];
 
     if (languageId) {
       const filteredSubSkills = allSubSkills.filter(subSkill => {
@@ -193,19 +198,28 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return languageMatch && grammarMatch;
       });
 
+      const filteredSubVocabularies = availableSubVocabularies.filter(subVocab => {
+        const subVocabParent = subVocab.vocabularyId || (subVocab as unknown as { vocabulary?: string }).vocabulary;
+        const matchesVocabulary = selectedVocabularyIds.length === 0 || selectedVocabularyIds.includes(subVocabParent || '');
+        return matchesVocabulary;
+      });
+
       setAvailableSubSkills(filteredSubSkills);
       setAvailableGrammar(filteredGrammar);
       setAvailableSubgrammar(filteredSubgrammar);
+      setAvailableFilteredSubVocabularies(filteredSubVocabularies);
 
       setSelectedSubSkills(prev => prev.filter(value => filteredSubSkills.some(item => item.value === value)));
       setSelectedGrammar(prev => prev.filter(value => filteredGrammar.some(item => item.value === value)));
       setSelectedSubgrammar(prev => prev.filter(value => filteredSubgrammar.some(item => item.value === value)));
+      setSelectedSubVocabularies(prev => prev.filter(value => filteredSubVocabularies.some(item => item.value === value)));
     } else {
       setAvailableSubSkills(allSubSkills);
       setAvailableGrammar(allGrammar);
       setAvailableSubgrammar(allSubgrammar);
+      setAvailableFilteredSubVocabularies(availableSubVocabularies);
     }
-  }, [getSelectedLanguageId, allSubSkills, allGrammar, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, availableSkills, availableGrammar]);
+  }, [getSelectedLanguageId, allSubSkills, allGrammar, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, selectedVocabularies, availableSkills, availableGrammar, availableVocabularies, availableSubVocabularies]);
 
   useEffect(() => {
     applyLanguageFilters();
@@ -256,12 +270,6 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return;
       }
 
-      if (availableVocabularies.length > 0 && !selectedVocabularyId) {
-        alert('Por favor selecciona un set de vocabulario');
-        setIsSaving(false);
-        return;
-      }
-
       const roleplayIdForSave = roleplay._id || roleplay.id;
       if (!roleplayIdForSave) {
         alert('Error: No se encontró el ID del roleplay');
@@ -269,6 +277,14 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return;
       }
       
+      const vocabularyIds = selectedVocabularies
+        .map(vocabValue => availableVocabularies.find(v => v.value === vocabValue)?.id)
+        .filter(id => id) as string[];
+      
+      const subVocabularyIds = selectedSubVocabularies
+        .map(subVocabValue => availableFilteredSubVocabularies.find(sv => sv.value === subVocabValue)?.id)
+        .filter(id => id) as string[];
+
       const payload: ActivityPayload = {
         rolePlayId: roleplayIdForSave,
         textId: null,
@@ -278,7 +294,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         subSkill: subSkillIds,
         grammar: grammarIds,
         subGrammar: subGrammarIds,
-        vocabularyI: selectedVocabularyId || null,
+        vocabulary: vocabularyIds,
+        subVocabulary: subVocabularyIds,
         durationAprox: duration,
       };
 
@@ -425,52 +442,24 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
               Vocabulario
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Selecciona el set de vocabulario que mejor se adapte a tu actividad.
+              Selecciona los vocabularios y sub-vocabularios para tu actividad.
             </p>
           </div>
 
-          {availableVocabularies.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-zinc-700 dark:text-gray-400">
-              No hay vocabularios disponibles.
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {availableVocabularies.map((vocab) => {
-                const isSelected = selectedVocabularyId === vocab.id;
-                const subVocabs = availableSubVocabularies.filter(sv => sv.vocabularyId === vocab.id);
-                return (
-                  <button
-                    type="button"
-                    key={vocab.id}
-                    onClick={() => setSelectedVocabularyId(vocab.id)}
-                    className={`text-left rounded-2xl border p-4 transition-all ${
-                      isSelected
-                        ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
-                        : 'border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 dark:border-zinc-800 dark:bg-black dark:text-white'
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="text-sm font-semibold uppercase tracking-wide">
-                        {vocab.value}
-                      </div>
-                      {subVocabs.length > 0 && (
-                        <>
-                          <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                            Sub-Vocabularios
-                          </div>
-                          <ul className={`space-y-1 text-sm ${isSelected ? 'text-white/90 dark:text-black/90' : 'text-gray-700 dark:text-gray-300'}`}>
-                            {subVocabs.map((subVocab) => (
-                              <li key={subVocab.id}>• {subVocab.value}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <MultiSelect
+              label="Vocabulary Main"
+              options={availableVocabularies.map(v => v.value)}
+              selected={selectedVocabularies}
+              onChange={setSelectedVocabularies}
+            />
+            <MultiSelect
+              label="Sub Vocabularies"
+              options={availableFilteredSubVocabularies.map(sv => sv.value)}
+              selected={selectedSubVocabularies}
+              onChange={setSelectedSubVocabularies}
+            />
+          </div>
         </div>
 
         <button

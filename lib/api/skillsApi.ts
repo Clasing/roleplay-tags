@@ -250,7 +250,8 @@ export interface ActivityPayload {
   subSkill: string[];
   grammar: string[];
   subGrammar: string[];
-  vocabularyI?: string | null;
+  vocabulary: string[];
+  subVocabulary: string[];
   durationAprox: number;
 }
 

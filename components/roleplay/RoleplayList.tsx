@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRoleplaySearch } from '@/hooks/useRoleplaySearch';
 import { useModal } from '@/hooks/useModal';
 import SearchBar from '@/components/ui/SearchBar';
+import LevelFilter from '@/components/ui/LevelFilter';
 import RoleplayGrid from '@/components/roleplay/RoleplayGrid';
 import Modal from '@/components/ui/Modal';
 import RoleplayDetails from '@/components/roleplay/RoleplayDetails';
@@ -15,7 +16,7 @@ interface RoleplayListProps {
 }
 
 export default function RoleplayList({ roleplays }: RoleplayListProps) {
-  const { filteredRoleplays, handleSearch, filteredCount, totalCount } = useRoleplaySearch(roleplays);
+  const { filteredRoleplays, handleSearch, handleLevelChange, selectedLevel, filteredCount, totalCount } = useRoleplaySearch(roleplays);
   const { isOpen, openModal, closeModal } = useModal();
   const { isOpen: isAdminOpen, openModal: openAdmin, closeModal: closeAdmin } = useModal();
   const [selectedRoleplay, setSelectedRoleplay] = useState<Roleplay | null>(null);
@@ -37,10 +38,16 @@ export default function RoleplayList({ roleplays }: RoleplayListProps) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex-1 sm:max-w-md">
-          <SearchBar
-            onSearch={handleSearch}
-            placeholder="Buscar por título..."
+        <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex-1 sm:max-w-md">
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder="Buscar por título..."
+            />
+          </div>
+          <LevelFilter
+            selectedLevel={selectedLevel}
+            onLevelChange={handleLevelChange}
           />
         </div>
 
