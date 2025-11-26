@@ -159,6 +159,20 @@ export async function createSkill(value: string): Promise<boolean> {
   }
 }
 
+export async function updateSkill(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/skills/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating skill:', error);
+    return false;
+  }
+}
+
 // Sub-Skills
 export async function getSubSkills(): Promise<SubSkill[]> {
   try {
@@ -182,6 +196,20 @@ export async function createSubSkill(value: string, skillId: string): Promise<bo
     return response.ok;
   } catch (error) {
     console.error('Error creating sub-skill:', error);
+    return false;
+  }
+}
+
+export async function updateSubSkill(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-skills/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating sub-skill:', error);
     return false;
   }
 }
@@ -213,6 +241,20 @@ export async function createGrammarType(value: string, languageId?: string): Pro
   }
 }
 
+export async function updateGrammarType(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/grammar-types/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating grammar type:', error);
+    return false;
+  }
+}
+
 // Sub-Grammar Types
 export async function getSubGrammarTypes(): Promise<SubGrammarType[]> {
   try {
@@ -236,6 +278,20 @@ export async function createSubGrammarType(value: string, grammarTypeId: string,
     return response.ok;
   } catch (error) {
     console.error('Error creating sub-grammar type:', error);
+    return false;
+  }
+}
+
+export async function updateSubGrammarType(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-grammar-types/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating sub-grammar type:', error);
     return false;
   }
 }
@@ -307,6 +363,20 @@ export async function createVocabulary(value: string): Promise<boolean> {
   }
 }
 
+export async function updateVocabulary(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating vocabulary:', error);
+    return false;
+  }
+}
+
 export async function createSubVocabulary(value: string, vocabularyId: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies`, {
@@ -317,6 +387,20 @@ export async function createSubVocabulary(value: string, vocabularyId: string): 
     return response.ok;
   } catch (error) {
     console.error('Error creating sub-vocabulary:', error);
+    return false;
+  }
+}
+
+export async function updateSubVocabulary(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating sub-vocabulary:', error);
     return false;
   }
 }

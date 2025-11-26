@@ -15,6 +15,12 @@ import {
   getSubVocabularies,
   createVocabulary,
   createSubVocabulary,
+  updateSkill,
+  updateSubSkill,
+  updateGrammarType,
+  updateSubGrammarType,
+  updateVocabulary,
+  updateSubVocabulary,
   type Skill,
   type SubSkill,
   type GrammarType,
@@ -72,6 +78,23 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const [searchSubSkill, setSearchSubSkill] = useState('');
   const [searchGrammar, setSearchGrammar] = useState('');
   const [searchSubGrammar, setSearchSubGrammar] = useState('');
+
+  // Edit states
+  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
+  const [editingSkillValue, setEditingSkillValue] = useState('');
+  const [editingSkillOriginalValue, setEditingSkillOriginalValue] = useState('');
+  const [editingSubSkillId, setEditingSubSkillId] = useState<string | null>(null);
+  const [editingSubSkillValue, setEditingSubSkillValue] = useState('');
+  const [editingGrammarId, setEditingGrammarId] = useState<string | null>(null);
+  const [editingGrammarValue, setEditingGrammarValue] = useState('');
+  const [editingGrammarOriginalValue, setEditingGrammarOriginalValue] = useState('');
+  const [editingSubGrammarId, setEditingSubGrammarId] = useState<string | null>(null);
+  const [editingSubGrammarValue, setEditingSubGrammarValue] = useState('');
+  const [editingVocabularyId, setEditingVocabularyId] = useState<string | null>(null);
+  const [editingVocabularyValue, setEditingVocabularyValue] = useState('');
+  const [editingVocabularyOriginalValue, setEditingVocabularyOriginalValue] = useState('');
+  const [editingSubVocabularyId, setEditingSubVocabularyId] = useState<string | null>(null);
+  const [editingSubVocabularyValue, setEditingSubVocabularyValue] = useState('');
 
   const loadData = async () => {
     const [skillsData, subSkillsData, grammarData, subGrammarData, languagesData, vocabulariesData, subVocabulariesData] = await Promise.all([
@@ -200,6 +223,84 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
     if (success) {
       setNewSubVocabularyValue('');
       setIsAddingSubVocabulary(false);
+      await loadData();
+    }
+  };
+
+  const handleUpdateSkill = async () => {
+    if (!editingSkillId || !editingSkillValue.trim()) return;
+    const trimmedValue = editingSkillValue.trim();
+    const success = await updateSkill(editingSkillId, trimmedValue);
+    if (success) {
+      if (selectedSkill === editingSkillOriginalValue) {
+        setSelectedSkill(trimmedValue);
+      }
+      setEditingSkillId(null);
+      setEditingSkillValue('');
+      setEditingSkillOriginalValue('');
+      await loadData();
+    }
+  };
+
+  const handleUpdateSubSkill = async () => {
+    if (!editingSubSkillId || !editingSubSkillValue.trim()) return;
+    const trimmedValue = editingSubSkillValue.trim();
+    const success = await updateSubSkill(editingSubSkillId, trimmedValue);
+    if (success) {
+      setEditingSubSkillId(null);
+      setEditingSubSkillValue('');
+      await loadData();
+    }
+  };
+
+  const handleUpdateGrammar = async () => {
+    if (!editingGrammarId || !editingGrammarValue.trim()) return;
+    const trimmedValue = editingGrammarValue.trim();
+    const success = await updateGrammarType(editingGrammarId, trimmedValue);
+    if (success) {
+      if (selectedGrammar === editingGrammarOriginalValue) {
+        setSelectedGrammar(trimmedValue);
+      }
+      setEditingGrammarId(null);
+      setEditingGrammarValue('');
+      setEditingGrammarOriginalValue('');
+      await loadData();
+    }
+  };
+
+  const handleUpdateSubGrammar = async () => {
+    if (!editingSubGrammarId || !editingSubGrammarValue.trim()) return;
+    const trimmedValue = editingSubGrammarValue.trim();
+    const success = await updateSubGrammarType(editingSubGrammarId, trimmedValue);
+    if (success) {
+      setEditingSubGrammarId(null);
+      setEditingSubGrammarValue('');
+      await loadData();
+    }
+  };
+
+  const handleUpdateVocabulary = async () => {
+    if (!editingVocabularyId || !editingVocabularyValue.trim()) return;
+    const trimmedValue = editingVocabularyValue.trim();
+    const success = await updateVocabulary(editingVocabularyId, trimmedValue);
+    if (success) {
+      if (selectedVocabulary === editingVocabularyOriginalValue) {
+        setSelectedVocabulary(trimmedValue);
+      }
+      setEditingVocabularyId(null);
+      setEditingVocabularyValue('');
+      setEditingVocabularyOriginalValue('');
+      await loadData();
+    }
+  };
+
+  const handleUpdateSubVocabulary = async () => {
+    if (!editingSubVocabularyId || !editingSubVocabularyValue.trim()) return;
+    const trimmedValue = editingSubVocabularyValue.trim();
+    const success = await updateSubVocabulary(editingSubVocabularyId, trimmedValue);
+    if (success) {
+      setEditingSubVocabularyId(null);
+      setEditingSubVocabularyValue('');
       await loadData();
     }
   };
@@ -386,26 +487,81 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                   {vocabularies
                     .filter(vocab => vocab.value.toLowerCase().includes(searchVocabulary.toLowerCase()))
-                    .map(vocab => (
-                      <button
-                        key={vocab.id}
-                        onClick={() => setSelectedVocabulary(vocab.value)}
-                        className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
-                          selectedVocabulary === vocab.value
-                            ? 'bg-black text-white dark:bg-white dark:text-black'
-                            : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{vocab.value}</span>
-                          {selectedVocabulary === vocab.value && (
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
+                    .map(vocab => {
+                      const isSelected = selectedVocabulary === vocab.value;
+                      const isEditing = editingVocabularyId === vocab.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={vocab.id}
+                            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-black"
+                          >
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Editar Vocabulary
+                            </label>
+                            <input
+                              type="text"
+                              value={editingVocabularyValue}
+                              onChange={(e) => setEditingVocabularyValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateVocabulary()}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                              autoFocus
+                            />
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={handleUpdateVocabulary}
+                                className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingVocabularyId(null);
+                                  setEditingVocabularyValue('');
+                                  setEditingVocabularyOriginalValue('');
+                                }}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={vocab.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedVocabulary(vocab.value)}
+                            className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
+                              isSelected
+                                ? 'bg-black text-white dark:bg-white dark:text-black'
+                                : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{vocab.value}</span>
+                              {isSelected && (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingVocabularyId(vocab.id);
+                              setEditingVocabularyValue(vocab.value);
+                              setEditingVocabularyOriginalValue(vocab.value);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                          >
+                            Editar
+                          </button>
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                 </div>
               </div>
 
@@ -482,16 +638,67 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 {/* Sub vocabularies list */}
                 <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                   {filteredSubVocabularies.length > 0 ? (
-                    filteredSubVocabularies.map(subVocab => (
-                      <div
-                        key={subVocab.id}
-                        className="rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                      >
-                        <span className="text-sm font-medium text-black dark:text-white">
-                          {subVocab.value}
-                        </span>
-                      </div>
-                    ))
+                    filteredSubVocabularies.map(subVocab => {
+                      const isEditing = editingSubVocabularyId === subVocab.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={subVocab.id}
+                            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-black"
+                          >
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Editar Sub Vocabulary
+                            </label>
+                            <input
+                              type="text"
+                              value={editingSubVocabularyValue}
+                              onChange={(e) => setEditingSubVocabularyValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubVocabulary()}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                              autoFocus
+                            />
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={handleUpdateSubVocabulary}
+                                className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSubVocabularyId(null);
+                                  setEditingSubVocabularyValue('');
+                                }}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={subVocab.id}
+                          className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                        >
+                          <span className="text-sm font-medium text-black dark:text-white">
+                            {subVocab.value}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingSubVocabularyId(subVocab.id);
+                              setEditingSubVocabularyValue(subVocab.value);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                          >
+                            Editar
+                          </button>
+                        </div>
+                      );
+                    })
                   ) : (
                     <div className="py-12 text-center">
                       <svg
@@ -590,26 +797,81 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                   {skills
                     .filter(skill => skill.value.toLowerCase().includes(searchSkill.toLowerCase()))
-                    .map(skill => (
-                      <button
-                        key={skill.id}
-                        onClick={() => setSelectedSkill(skill.value)}
-                        className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
-                          selectedSkill === skill.value
-                            ? 'bg-black text-white dark:bg-white dark:text-black'
-                            : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{skill.value}</span>
-                          {selectedSkill === skill.value && (
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
+                    .map(skill => {
+                      const isSelected = selectedSkill === skill.value;
+                      const isEditing = editingSkillId === skill.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={skill.id}
+                            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-black"
+                          >
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Editar Skill
+                            </label>
+                            <input
+                              type="text"
+                              value={editingSkillValue}
+                              onChange={(e) => setEditingSkillValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateSkill()}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                              autoFocus
+                            />
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={handleUpdateSkill}
+                                className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSkillId(null);
+                                  setEditingSkillValue('');
+                                  setEditingSkillOriginalValue('');
+                                }}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={skill.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedSkill(skill.value)}
+                            className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
+                              isSelected
+                                ? 'bg-black text-white dark:bg-white dark:text-black'
+                                : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{skill.value}</span>
+                              {isSelected && (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingSkillId(skill.id);
+                              setEditingSkillValue(skill.value);
+                              setEditingSkillOriginalValue(skill.value);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                          >
+                            Editar
+                          </button>
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                 </div>
               </div>
 
@@ -686,16 +948,67 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 {/* Sub skills list */}
                 <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                   {filteredSubSkills.length > 0 ? (
-                    filteredSubSkills.map(subSkill => (
-                      <div
-                        key={subSkill.id}
-                        className="rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
-                      >
-                        <span className="text-sm font-medium text-black dark:text-white">
-                          {subSkill.value}
-                        </span>
-                      </div>
-                    ))
+                    filteredSubSkills.map(subSkill => {
+                      const isEditing = editingSubSkillId === subSkill.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={subSkill.id}
+                            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-black"
+                          >
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Editar Sub Skill
+                            </label>
+                            <input
+                              type="text"
+                              value={editingSubSkillValue}
+                              onChange={(e) => setEditingSubSkillValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubSkill()}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                              autoFocus
+                            />
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={handleUpdateSubSkill}
+                                className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSubSkillId(null);
+                                  setEditingSubSkillValue('');
+                                }}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={subSkill.id}
+                          className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                        >
+                          <span className="text-sm font-medium text-black dark:text-white">
+                            {subSkill.value}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingSubSkillId(subSkill.id);
+                              setEditingSubSkillValue(subSkill.value);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                          >
+                            Editar
+                          </button>
+                        </div>
+                      );
+                    })
                   ) : (
                     <div className="py-12 text-center">
                       <svg
@@ -817,26 +1130,81 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                   {grammarTypes
                     .filter(grammar => grammar.value.toLowerCase().includes(searchGrammar.toLowerCase()))
-                    .map(grammar => (
-                      <button
-                        key={grammar.id}
-                        onClick={() => setSelectedGrammar(grammar.value)}
-                        className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
-                          selectedGrammar === grammar.value
-                            ? 'bg-black text-white dark:bg-white dark:text-black'
-                            : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{grammar.value}</span>
-                          {selectedGrammar === grammar.value && (
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
+                    .map(grammar => {
+                      const isSelected = selectedGrammar === grammar.value;
+                      const isEditing = editingGrammarId === grammar.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={grammar.id}
+                            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-black"
+                          >
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Editar Grammar
+                            </label>
+                            <input
+                              type="text"
+                              value={editingGrammarValue}
+                              onChange={(e) => setEditingGrammarValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateGrammar()}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                              autoFocus
+                            />
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={handleUpdateGrammar}
+                                className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingGrammarId(null);
+                                  setEditingGrammarValue('');
+                                  setEditingGrammarOriginalValue('');
+                                }}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={grammar.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedGrammar(grammar.value)}
+                            className={`group w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
+                              isSelected
+                                ? 'bg-black text-white dark:bg-white dark:text-black'
+                                : 'bg-gray-50 text-gray-900 hover:bg-gray-100 dark:bg-zinc-900 dark:text-gray-100 dark:hover:bg-zinc-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{grammar.value}</span>
+                              {isSelected && (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingGrammarId(grammar.id);
+                              setEditingGrammarValue(grammar.value);
+                              setEditingGrammarOriginalValue(grammar.value);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                          >
+                            Editar
+                          </button>
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                 </div>
               </div>
 
@@ -918,17 +1286,69 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                   {filteredSubGrammar.length > 0 ? (
                     filteredSubGrammar.map(subGrammar => {
                       const language = languages.find(l => l.id === subGrammar.languageId || l.id === subGrammar.language);
+                      const isEditing = editingSubGrammarId === subGrammar.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={subGrammar.id}
+                            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-black"
+                          >
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Editar Sub Grammar
+                            </label>
+                            <input
+                              type="text"
+                              value={editingSubGrammarValue}
+                              onChange={(e) => setEditingSubGrammarValue(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubGrammar()}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                              autoFocus
+                            />
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={handleUpdateSubGrammar}
+                                className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSubGrammarId(null);
+                                  setEditingSubGrammarValue('');
+                                }}
+                                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                              Idioma actual: <span className="font-semibold text-gray-700 dark:text-gray-200">{language?.language || 'Sin idioma'}</span>
+                            </p>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div
                           key={subGrammar.id}
-                          className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                          className="flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-4 py-3 transition-colors hover:bg-gray-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
                         >
-                          <span className="text-sm font-medium text-black dark:text-white">
-                            {subGrammar.value}
-                          </span>
-                          <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-gray-300">
-                            {language?.language || 'Sin idioma'}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-black dark:text-white">{subGrammar.value}</span>
+                            <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-gray-300">
+                              {language?.language || 'Sin idioma'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingSubGrammarId(subGrammar.id);
+                              setEditingSubGrammarValue(subGrammar.value);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                          >
+                            Editar
+                          </button>
                         </div>
                       );
                     })
