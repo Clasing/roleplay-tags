@@ -132,6 +132,32 @@ export async function createLanguage(language: string): Promise<boolean> {
   }
 }
 
+export async function updateLanguage(id: string, language: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/languages/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating language:', error);
+    return false;
+  }
+}
+
+export async function deleteLanguage(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/languages/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting language:', error);
+    return false;
+  }
+}
+
 // Skills
 export async function getSkills(): Promise<Skill[]> {
   try {
@@ -169,6 +195,18 @@ export async function updateSkill(id: string, value: string): Promise<boolean> {
     return response.ok;
   } catch (error) {
     console.error('Error updating skill:', error);
+    return false;
+  }
+}
+
+export async function deleteSkill(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/skills/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting skill:', error);
     return false;
   }
 }
@@ -214,6 +252,18 @@ export async function updateSubSkill(id: string, value: string): Promise<boolean
   }
 }
 
+export async function deleteSubSkill(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-skills/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting sub-skill:', error);
+    return false;
+  }
+}
+
 // Grammar Types
 export async function getGrammarTypes(): Promise<GrammarType[]> {
   try {
@@ -255,6 +305,18 @@ export async function updateGrammarType(id: string, value: string): Promise<bool
   }
 }
 
+export async function deleteGrammarType(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/grammar-types/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting grammar type:', error);
+    return false;
+  }
+}
+
 // Sub-Grammar Types
 export async function getSubGrammarTypes(): Promise<SubGrammarType[]> {
   try {
@@ -292,6 +354,18 @@ export async function updateSubGrammarType(id: string, value: string): Promise<b
     return response.ok;
   } catch (error) {
     console.error('Error updating sub-grammar type:', error);
+    return false;
+  }
+}
+
+export async function deleteSubGrammarType(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-grammar-types/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting sub-grammar type:', error);
     return false;
   }
 }
@@ -377,6 +451,18 @@ export async function updateVocabulary(id: string, value: string): Promise<boole
   }
 }
 
+export async function deleteVocabulary(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting vocabulary:', error);
+    return false;
+  }
+}
+
 export async function createSubVocabulary(value: string, vocabularyId: string): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies`, {
@@ -401,6 +487,18 @@ export async function updateSubVocabulary(id: string, value: string): Promise<bo
     return response.ok;
   } catch (error) {
     console.error('Error updating sub-vocabulary:', error);
+    return false;
+  }
+}
+
+export async function deleteSubVocabulary(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting sub-vocabulary:', error);
     return false;
   }
 }

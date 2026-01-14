@@ -22,6 +22,8 @@ import {
   Vocabulary,
   SubVocabulary,
 } from '@/lib/api/skillsApi';
+import { useToast } from '@/hooks/useToast';
+import ToastStack from '@/components/ui/Toast';
 
 interface TagsFormData {
   vocabularyTags: string[];
@@ -39,6 +41,9 @@ interface TagsFormProps {
 }
 
 export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFormProps) {
+  const sortByValue = <T extends { value: string }>(items: T[]) =>
+    [...items].sort((a, b) => a.value.localeCompare(b.value, 'es', { sensitivity: 'base' }));
+
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [availableSubSkills, setAvailableSubSkills] = useState<SubSkill[]>([]);
   const [allSubSkills, setAllSubSkills] = useState<SubSkill[]>([]);
@@ -60,6 +65,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedSubgrammar, setSelectedSubgrammar] = useState<string[]>([]);
   const [selectedVocabularies, setSelectedVocabularies] = useState<string[]>([]);
   const [selectedSubVocabularies, setSelectedSubVocabularies] = useState<string[]>([]);
+  const { toasts, pushToast, dismiss } = useToast();
 
   useEffect(() => {
     const loadData = async () => {
@@ -95,13 +101,13 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       }
       
       setAvailableSkills(skills);
-      setAllSubSkills(subSkills);
-      setAvailableGrammar(grammar);
-      setAllGrammar(grammar);
-      setAllSubgrammar(subgrammar);
+      setAllSubSkills(sortByValue(subSkills));
+      setAvailableGrammar(sortByValue(grammar));
+      setAllGrammar(sortByValue(grammar));
+      setAllSubgrammar(sortByValue(subgrammar));
       setAvailableLanguages(languages);
-      setAvailableVocabularies(vocabularies);
-      setAvailableSubVocabularies(subVocabularies);
+      setAvailableVocabularies(sortByValue(vocabularies));
+      setAvailableSubVocabularies(sortByValue(subVocabularies));
 
       // Si existe actividad, cargar los tags existentes
       if (activity) {
@@ -204,10 +210,10 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return matchesVocabulary;
       });
 
-      setAvailableSubSkills(filteredSubSkills);
-      setAvailableGrammar(filteredGrammar);
-      setAvailableSubgrammar(filteredSubgrammar);
-      setAvailableFilteredSubVocabularies(filteredSubVocabularies);
+      setAvailableSubSkills(sortByValue(filteredSubSkills));
+      setAvailableGrammar(sortByValue(filteredGrammar));
+      setAvailableSubgrammar(sortByValue(filteredSubgrammar));
+      setAvailableFilteredSubVocabularies(sortByValue(filteredSubVocabularies));
 
       setSelectedSubSkills(prev => prev.filter(value => filteredSubSkills.some(item => item.value === value)));
       setSelectedGrammar(prev => prev.filter(value => filteredGrammar.some(item => item.value === value)));
@@ -259,20 +265,20 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         .filter(id => id) as string[];
       
       if (!languageId) {
-        alert('Por favor selecciona un idioma');
+        pushToast('warning', 'Selecciona un idioma antes de guardar');
         setIsSaving(false);
         return;
       }
 
       if (themes.length === 0) {
-        alert('Por favor agrega al menos un tema para la actividad');
+        pushToast('warning', 'Agrega al menos un tema');
         setIsSaving(false);
         return;
       }
 
       const roleplayIdForSave = roleplay._id || roleplay.id;
       if (!roleplayIdForSave) {
-        alert('Error: No se encontró el ID del roleplay');
+        pushToast('error', 'No se encontró el ID del roleplay');
         setIsSaving(false);
         return;
       }
@@ -304,7 +310,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       const success = await createActivity(payload);
       
       if (success) {
-        alert('Actividad guardada exitosamente');
+        pushToast('success', 'Actividad guardada exitosamente');
         onSave({
           vocabularyTags: [],
           skillMain: selectedSkills,
@@ -314,11 +320,11 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
           language: selectedLanguage,
         });
       } else {
-        alert('Error al guardar la actividad');
+        pushToast('error', 'Error al guardar la actividad');
       }
     } catch (error) {
       console.error('Error saving activity:', error);
-      alert('Error al guardar la actividad');
+      pushToast('error', 'Error al guardar la actividad');
     } finally {
       setIsSaving(false);
     }
@@ -326,6 +332,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
 
   return (
     <div className="space-y-6">
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
       <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="space-y-4">
           <div className="space-y-2">

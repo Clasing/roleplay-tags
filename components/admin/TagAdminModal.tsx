@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   getSkills, 
   getSubSkills, 
   getGrammarTypes, 
   getSubGrammarTypes,
   getLanguages,
+  createLanguage,
   createSkill,
   createSubSkill,
   createGrammarType,
@@ -21,6 +22,14 @@ import {
   updateSubGrammarType,
   updateVocabulary,
   updateSubVocabulary,
+  updateLanguage,
+  deleteSkill,
+  deleteSubSkill,
+  deleteGrammarType,
+  deleteSubGrammarType,
+  deleteVocabulary,
+  deleteSubVocabulary,
+  deleteLanguage,
   type Skill,
   type SubSkill,
   type GrammarType,
@@ -29,6 +38,14 @@ import {
   type Vocabulary,
   type SubVocabulary
 } from '@/lib/api/skillsApi';
+import { useToast } from '@/hooks/useToast';
+import ToastStack from '@/components/ui/Toast';
+
+const sortByValue = <T extends { value: string }>(items: T[]) =>
+  [...items].sort((a, b) => a.value.localeCompare(b.value, 'es', { sensitivity: 'base' }));
+
+const sortByLanguage = (items: Language[]) =>
+  [...items].sort((a, b) => a.language.localeCompare(b.language, 'es', { sensitivity: 'base' }));
 
 interface TagAdminModalProps {
   isOpen: boolean;
@@ -37,9 +54,19 @@ interface TagAdminModalProps {
 
 type TabType = 'skills' | 'grammar' | 'vocabularies';
 
+type ConfirmState = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => Promise<void>;
+};
+
 export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('skills');
   const [languages, setLanguages] = useState<Language[]>([]);
+  const [isAddingLanguage, setIsAddingLanguage] = useState(false);
+  const [newLanguageValue, setNewLanguageValue] = useState('');
   
   // Skills state
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -95,8 +122,14 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const [editingVocabularyOriginalValue, setEditingVocabularyOriginalValue] = useState('');
   const [editingSubVocabularyId, setEditingSubVocabularyId] = useState<string | null>(null);
   const [editingSubVocabularyValue, setEditingSubVocabularyValue] = useState('');
+  const [editingLanguageId, setEditingLanguageId] = useState<string | null>(null);
+  const [editingLanguageValue, setEditingLanguageValue] = useState('');
+  const [showLanguages, setShowLanguages] = useState(false);
 
-  const loadData = async () => {
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const { toasts, pushToast, dismiss } = useToast();
+
+  const loadData = useCallback(async () => {
     const [skillsData, subSkillsData, grammarData, subGrammarData, languagesData, vocabulariesData, subVocabulariesData] = await Promise.all([
       getSkills(),
       getSubSkills(),
@@ -107,23 +140,14 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
       getSubVocabularies()
     ]);
     
-    setSkills(skillsData);
-    setSubSkills(subSkillsData);
-    setGrammarTypes(grammarData);
-    setSubGrammarTypes(subGrammarData);
-    setLanguages(languagesData);
-    setVocabularies(vocabulariesData);
-    setSubVocabularies(subVocabulariesData);
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      // Load data when modal opens
-      (async () => {
-        await loadData();
-      })();
-    }
-  }, [isOpen]);
+    setSkills(sortByValue(skillsData));
+    setSubSkills(sortByValue(subSkillsData));
+    setGrammarTypes(sortByValue(grammarData));
+    setSubGrammarTypes(sortByValue(subGrammarData));
+    setLanguages(sortByLanguage(languagesData));
+    setVocabularies(sortByValue(vocabulariesData));
+    setSubVocabularies(sortByValue(subVocabulariesData));
+  }, []);
 
   const filteredSubSkills = subSkills.filter(sub => {
     const selectedSkillId = skills.find(s => s.value === selectedSkill)?.id;
@@ -176,7 +200,7 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
   const handleAddGrammar = async () => {
     if (!newGrammarValue.trim()) return;
     if (!selectedLanguageForGrammar) {
-      alert('Por favor selecciona un idioma');
+      pushToast('warning', 'Selecciona un idioma antes de crear grammar');
       return;
     }
     const success = await createGrammarType(newGrammarValue.trim(), selectedLanguageForGrammar);
@@ -187,10 +211,41 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
     }
   };
 
+  const handleAddLanguage = async () => {
+    const value = newLanguageValue.trim();
+    if (!value) {
+      pushToast('warning', 'Ingresa un idioma');
+      return;
+    }
+    const success = await createLanguage(value);
+    if (success) {
+      pushToast('success', 'Idioma creado');
+      setNewLanguageValue('');
+      setIsAddingLanguage(false);
+      await loadData();
+    } else {
+      pushToast('error', 'No se pudo crear el idioma');
+    }
+  };
+
+  const handleUpdateLanguage = async () => {
+    if (!editingLanguageId || !editingLanguageValue.trim()) return;
+    const trimmedValue = editingLanguageValue.trim();
+    const success = await updateLanguage(editingLanguageId, trimmedValue);
+    if (success) {
+      setEditingLanguageId(null);
+      setEditingLanguageValue('');
+      pushToast('success', 'Idioma actualizado');
+      await loadData();
+    } else {
+      pushToast('error', 'No se pudo actualizar el idioma');
+    }
+  };
+
   const handleAddSubGrammar = async () => {
     if (!newSubGrammarValue.trim() || !selectedGrammar) return;
     if (!selectedLanguageForGrammar) {
-      alert('Por favor selecciona un idioma');
+      pushToast('warning', 'Selecciona un idioma antes de crear sub grammar');
       return;
     }
     const grammarId = grammarTypes.find(g => g.value === selectedGrammar)?.id;
@@ -305,22 +360,152 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
     }
   };
 
+  const closeConfirm = useCallback(() => setConfirmState(null), []);
+
+  const acceptConfirm = useCallback(async () => {
+    if (!confirmState) return;
+    await confirmState.onConfirm();
+    closeConfirm();
+  }, [confirmState, closeConfirm]);
+
+  const handleDeleteSkill = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar skill',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteSkill(id);
+        if (success) {
+          if (selectedSkill === value) setSelectedSkill('');
+          pushToast('success', 'Skill eliminada');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar el skill');
+        }
+      }
+    });
+  };
+
+  const handleDeleteSubSkill = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar sub skill',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteSubSkill(id);
+        if (success) {
+          pushToast('success', 'Sub skill eliminada');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar el sub skill');
+        }
+      }
+    });
+  };
+
+  const handleDeleteGrammar = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar grammar',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteGrammarType(id);
+        if (success) {
+          if (selectedGrammar === value) setSelectedGrammar('');
+          pushToast('success', 'Grammar eliminada');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar la grammar');
+        }
+      }
+    });
+  };
+
+  const handleDeleteSubGrammar = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar sub grammar',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteSubGrammarType(id);
+        if (success) {
+          pushToast('success', 'Sub grammar eliminada');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar la sub grammar');
+        }
+      }
+    });
+  };
+
+  const handleDeleteVocabulary = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar vocabulary',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteVocabulary(id);
+        if (success) {
+          if (selectedVocabulary === value) setSelectedVocabulary('');
+          pushToast('success', 'Vocabulary eliminado');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar el vocabulary');
+        }
+      }
+    });
+  };
+
+  const handleDeleteLanguage = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar idioma',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteLanguage(id);
+        if (success) {
+          if (selectedLanguageForGrammar === id) setSelectedLanguageForGrammar('');
+          pushToast('success', 'Idioma eliminado');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar el idioma');
+        }
+      }
+    });
+  };
+
+  const handleDeleteSubVocabulary = async (id: string, value: string) => {
+    setConfirmState({
+      title: 'Eliminar sub vocabulary',
+      message: `¿Seguro que quieres eliminar "${value}"?`,
+      onConfirm: async () => {
+        const success = await deleteSubVocabulary(id);
+        if (success) {
+          pushToast('success', 'Sub vocabulary eliminado');
+          await loadData();
+        } else {
+          pushToast('error', 'No se pudo eliminar el sub vocabulary');
+        }
+      }
+    });
+  };
+
   useEffect(() => {
-    if (isOpen) {
-      // Bloquear scroll del body cuando el modal está abierto
-      document.body.style.overflow = 'hidden';
-    } else {
+    if (!isOpen) {
       document.body.style.overflow = 'unset';
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
     }
+
+    // Bloquear scroll del body cuando el modal está abierto
+    document.body.style.overflow = 'hidden';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
 
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]);
+  }, [isOpen, loadData]);
 
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop con blur */}
       <div
@@ -559,6 +744,12 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                           >
                             Editar
                           </button>
+                          <button
+                            onClick={() => handleDeleteVocabulary(vocab.id, vocab.value)}
+                            className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-600 transition-all hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                          >
+                            Eliminar
+                          </button>
                         </div>
                       );
                     })}
@@ -687,15 +878,23 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                           <span className="text-sm font-medium text-black dark:text-white">
                             {subVocab.value}
                           </span>
-                          <button
-                            onClick={() => {
-                              setEditingSubVocabularyId(subVocab.id);
-                              setEditingSubVocabularyValue(subVocab.value);
-                            }}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
-                          >
-                            Editar
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingSubVocabularyId(subVocab.id);
+                                setEditingSubVocabularyValue(subVocab.value);
+                              }}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSubVocabulary(subVocab.id, subVocab.value)}
+                              className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-600 transition-all hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </div>
                       );
                     })
@@ -869,6 +1068,12 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                           >
                             Editar
                           </button>
+                          <button
+                            onClick={() => handleDeleteSkill(skill.id, skill.value)}
+                            className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-600 transition-all hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                          >
+                            Eliminar
+                          </button>
                         </div>
                       );
                     })}
@@ -997,15 +1202,23 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                           <span className="text-sm font-medium text-black dark:text-white">
                             {subSkill.value}
                           </span>
-                          <button
-                            onClick={() => {
-                              setEditingSubSkillId(subSkill.id);
-                              setEditingSubSkillValue(subSkill.value);
-                            }}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
-                          >
-                            Editar
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingSubSkillId(subSkill.id);
+                                setEditingSubSkillValue(subSkill.value);
+                              }}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSubSkill(subSkill.id, subSkill.value)}
+                              className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-600 transition-all hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </div>
                       );
                     })
@@ -1042,18 +1255,157 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                 <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
                   Este idioma se aplicará tanto a las Grammar principales como a las Sub Grammar que crees.
                 </p>
-                <select
-                  value={selectedLanguageForGrammar}
-                  onChange={(e) => setSelectedLanguageForGrammar(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
-                >
-                  <option value="">Seleccionar idioma</option>
-                  {languages.map(lang => (
-                    <option key={lang.id} value={lang.id}>
-                      {lang.language}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <select
+                    value={selectedLanguageForGrammar}
+                    onChange={(e) => setSelectedLanguageForGrammar(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                  >
+                    <option value="">Seleccionar idioma</option>
+                    {languages.map(lang => (
+                      <option key={lang.id} value={lang.id}>
+                        {lang.language}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => setIsAddingLanguage((prev) => !prev)}
+                    className="whitespace-nowrap rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 transition hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-black dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                  >
+                    {isAddingLanguage ? 'Cerrar' : 'Nuevo idioma'}
+                  </button>
+                </div>
+
+                {isAddingLanguage && (
+                  <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
+                    <input
+                      type="text"
+                      value={newLanguageValue}
+                      onChange={(e) => setNewLanguageValue(e.target.value)}
+                      placeholder="Ej: English, Español"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddLanguage()}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-white dark:focus:ring-white/10"
+                    />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <button
+                        onClick={handleAddLanguage}
+                        className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 active:scale-[0.99] dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                      >
+                        Guardar idioma
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAddingLanguage(false);
+                          setNewLanguageValue('');
+                        }}
+                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200 dark:hover:border-white dark:hover:bg-zinc-800"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 space-y-2 rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-black/50">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-black dark:text-white">Idiomas disponibles</h4>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{languages.length} idiomas</span>
+                    </div>
+                    <button
+                      onClick={() => setShowLanguages((prev) => !prev)}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-700 transition hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-black dark:text-gray-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                    >
+                      {showLanguages ? 'Ocultar' : 'Mostrar'}
+                    </button>
+                  </div>
+
+                  {showLanguages && (
+                    <>
+                      {languages.length === 0 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Aún no tienes idiomas creados.</p>
+                      )}
+
+                      {languages.map((lang) => {
+                        const isEditing = editingLanguageId === lang.id;
+                        const isSelected = selectedLanguageForGrammar === lang.id;
+
+                        if (isEditing) {
+                          return (
+                            <div
+                              key={lang.id}
+                              className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+                            >
+                              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Editar idioma
+                              </label>
+                              <input
+                                type="text"
+                                value={editingLanguageValue}
+                                onChange={(e) => setEditingLanguageValue(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleUpdateLanguage()}
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-black dark:text-white dark:focus:border-white dark:focus:ring-white/10"
+                                autoFocus
+                              />
+                              <div className="mt-3 flex gap-2">
+                                <button
+                                  onClick={handleUpdateLanguage}
+                                  className="flex-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingLanguageId(null);
+                                    setEditingLanguageValue('');
+                                  }}
+                                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-black hover:bg-gray-50 dark:border-zinc-700 dark:bg-black dark:text-gray-300 dark:hover:border-white dark:hover:bg-zinc-900"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={lang.id}
+                            className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+                          >
+                            <button
+                              onClick={() => setSelectedLanguageForGrammar(lang.id)}
+                              className={`flex-1 text-left font-medium transition ${
+                                isSelected
+                                  ? 'text-black underline decoration-2 underline-offset-4 dark:text-white'
+                                  : 'text-gray-800 hover:text-black dark:text-gray-200 dark:hover:text-white'
+                              }`}
+                            >
+                              {lang.language}
+                              {isSelected && <span className="ml-2 inline-flex rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white dark:bg-white dark:text-black">Seleccionado</span>}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingLanguageId(lang.id);
+                                setEditingLanguageValue(lang.language);
+                              }}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600 transition hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-black dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLanguage(lang.id, lang.language)}
+                              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-600 transition hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -1202,6 +1554,12 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                           >
                             Editar
                           </button>
+                          <button
+                            onClick={() => handleDeleteGrammar(grammar.id, grammar.value)}
+                            className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-600 transition-all hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                          >
+                            Eliminar
+                          </button>
                         </div>
                       );
                     })}
@@ -1340,15 +1698,23 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
                               {language?.language || 'Sin idioma'}
                             </span>
                           </div>
-                          <button
-                            onClick={() => {
-                              setEditingSubGrammarId(subGrammar.id);
-                              setEditingSubGrammarValue(subGrammar.value);
-                            }}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
-                          >
-                            Editar
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingSubGrammarId(subGrammar.id);
+                                setEditingSubGrammarValue(subGrammar.value);
+                              }}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600 transition-all hover:border-black hover:bg-black hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-300 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSubGrammar(subGrammar.id, subGrammar.value)}
+                              className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-600 transition-all hover:border-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:bg-zinc-900 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </div>
                       );
                     })
@@ -1380,5 +1746,31 @@ export default function TagAdminModal({ isOpen, onClose }: TagAdminModalProps) {
         </div>
       </div>
     </div>
+
+    <ToastStack toasts={toasts} onDismiss={dismiss} />
+
+    {confirmState && (
+      <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+          <h3 className="text-lg font-semibold text-black dark:text-white">{confirmState.title}</h3>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{confirmState.message}</p>
+          <div className="mt-5 flex justify-end gap-3">
+            <button
+              onClick={closeConfirm}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200 dark:hover:border-white dark:hover:bg-zinc-800"
+            >
+              {confirmState.cancelLabel || 'Cancelar'}
+            </button>
+            <button
+              onClick={acceptConfirm}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.99]"
+            >
+              {confirmState.confirmLabel || 'Eliminar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
