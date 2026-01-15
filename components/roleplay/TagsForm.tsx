@@ -111,21 +111,26 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
 
       // Si existe actividad, cargar los tags existentes
       if (activity) {
-        // Mapear IDs a valores (names)
+        // Mapear IDs a valores (names). Incluimos fallback por si el backend devuelve _id o directamente el valor.
+        const resolveValue = <T extends { id?: string; value: string }>(collection: T[], idOrValue: string) => {
+          const match = collection.find(item => item.id === idOrValue || (item as unknown as { _id?: string })._id === idOrValue || item.value === idOrValue);
+          return match?.value;
+        };
+
         const skillValues = activity.skillMain
-          .map(id => skills.find(s => s.id === id)?.value)
+          .map(id => resolveValue(skills, id))
           .filter(Boolean) as string[];
         
         const subSkillValues = activity.subSkill
-          .map(id => subSkills.find(s => s.id === id)?.value)
+          .map(id => resolveValue(subSkills, id))
           .filter(Boolean) as string[];
         
         const grammarValues = activity.grammar
-          .map(id => grammar.find(g => g.id === id)?.value)
+          .map(id => resolveValue(grammar, id))
           .filter(Boolean) as string[];
         
         const subGrammarValues = activity.subGrammar
-          .map(id => subgrammar.find(sg => sg.id === id)?.value)
+          .map(id => resolveValue(subgrammar, id))
           .filter(Boolean) as string[];
 
         setSelectedSkills(skillValues);
@@ -169,7 +174,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     const languageId = getSelectedLanguageId();
     const defaultLangId = defaultLanguage?.id;
     const selectedSkillIds = selectedSkills.map(skillValue => availableSkills.find(s => s.value === skillValue)?.id).filter(Boolean) as string[];
-    const selectedGrammarIds = selectedGrammar.map(grammarValue => availableGrammar.find(g => g.value === grammarValue)?.id).filter(Boolean) as string[];
+    const selectedGrammarIds = selectedGrammar.map(grammarValue => allGrammar.find(g => g.value === grammarValue)?.id).filter(Boolean) as string[];
     const selectedVocabularyIds = selectedVocabularies.map(vocabValue => availableVocabularies.find(v => v.value === vocabValue)?.id).filter(Boolean) as string[];
 
     if (languageId) {
@@ -225,7 +230,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setAvailableSubgrammar(allSubgrammar);
       setAvailableFilteredSubVocabularies(availableSubVocabularies);
     }
-  }, [getSelectedLanguageId, allSubSkills, allGrammar, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, selectedVocabularies, availableSkills, availableGrammar, availableVocabularies, availableSubVocabularies]);
+  }, [getSelectedLanguageId, allSubSkills, allGrammar, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, selectedVocabularies, availableSkills, availableVocabularies, availableSubVocabularies]);
 
   useEffect(() => {
     applyLanguageFilters();

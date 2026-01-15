@@ -15,7 +15,7 @@ const normalizeCollection = <T extends { id: string }>(data: unknown): T[] => {
       const normalizedId = item.id || item._id;
       if (!normalizedId) return null;
 
-      const { _id, ...rest } = item as Record<string, unknown>;
+      const { _id: _omit, ...rest } = item as Record<string, unknown>;
       return { ...rest, id: normalizedId } as T;
     })
     .filter(Boolean) as T[];
