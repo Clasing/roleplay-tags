@@ -171,6 +171,12 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [availableFilteredSubVocabularies, setAvailableFilteredSubVocabularies] = useState<SubVocabulary[]>([]);
 
   const applyLanguageFilters = useCallback(() => {
+    const arraysEqual = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+    const listEqual = <T extends { value: string }>(a: T[], b: T[]) => a.length === b.length && a.every((item, i) => item.value === b[i]?.value);
+    const setIfChanged = <T extends { value: string }>(setter: (next: T[]) => void, next: T[], prev: T[]) => {
+      if (!listEqual(next, prev)) setter(next);
+    };
+
     const languageId = getSelectedLanguageId();
     const defaultLangId = defaultLanguage?.id;
     const selectedSkillIds = selectedSkills.map(skillValue => availableSkills.find(s => s.value === skillValue)?.id).filter(Boolean) as string[];
@@ -191,7 +197,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       });
 
       const filteredGrammar = allGrammar.filter(grammar => {
-        const grammarLanguage = grammar.language;
+        const grammarLanguage = (grammar as unknown as { language?: string; languageId?: string }).language ?? (grammar as unknown as { languageId?: string }).languageId;
         // Filter by language
         const languageMatch = !grammarLanguage || grammarLanguage === defaultLangId || grammarLanguage === languageId;
         return languageMatch;
@@ -215,22 +221,63 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return matchesVocabulary;
       });
 
-      setAvailableSubSkills(sortByValue(filteredSubSkills));
-      setAvailableGrammar(sortByValue(filteredGrammar));
-      setAvailableSubgrammar(sortByValue(filteredSubgrammar));
-      setAvailableFilteredSubVocabularies(sortByValue(filteredSubVocabularies));
+      const nextSubSkills = sortByValue(filteredSubSkills);
+      const nextGrammar = sortByValue(filteredGrammar);
+      const nextSubgrammar = sortByValue(filteredSubgrammar);
+      const nextSubVocabularies = sortByValue(filteredSubVocabularies);
 
-      setSelectedSubSkills(prev => prev.filter(value => filteredSubSkills.some(item => item.value === value)));
-      setSelectedGrammar(prev => prev.filter(value => filteredGrammar.some(item => item.value === value)));
-      setSelectedSubgrammar(prev => prev.filter(value => filteredSubgrammar.some(item => item.value === value)));
-      setSelectedSubVocabularies(prev => prev.filter(value => filteredSubVocabularies.some(item => item.value === value)));
+      setIfChanged(setAvailableSubSkills, nextSubSkills, availableSubSkills);
+      setIfChanged(setAvailableGrammar, nextGrammar, availableGrammar);
+      setIfChanged(setAvailableSubgrammar, nextSubgrammar, availableSubgrammar);
+      setIfChanged(setAvailableFilteredSubVocabularies, nextSubVocabularies, availableFilteredSubVocabularies);
+
+      const allowedSubSkills = new Set(filteredSubSkills.map(item => item.value));
+      const allowedGrammar = new Set(filteredGrammar.map(item => item.value));
+      const allowedSubgrammar = new Set(filteredSubgrammar.map(item => item.value));
+      const allowedSubVocab = new Set(filteredSubVocabularies.map(item => item.value));
+
+      setSelectedSubSkills(prev => {
+        const filtered = prev.filter(value => allowedSubSkills.has(value));
+        return arraysEqual(prev, filtered) ? prev : filtered;
+      });
+
+      setSelectedGrammar(prev => {
+        const filtered = prev.filter(value => allowedGrammar.has(value));
+        return arraysEqual(prev, filtered) ? prev : filtered;
+      });
+
+      setSelectedSubgrammar(prev => {
+        const filtered = prev.filter(value => allowedSubgrammar.has(value));
+        return arraysEqual(prev, filtered) ? prev : filtered;
+      });
+
+      setSelectedSubVocabularies(prev => {
+        const filtered = prev.filter(value => allowedSubVocab.has(value));
+        return arraysEqual(prev, filtered) ? prev : filtered;
+      });
     } else {
-      setAvailableSubSkills(allSubSkills);
-      setAvailableGrammar(allGrammar);
-      setAvailableSubgrammar(allSubgrammar);
-      setAvailableFilteredSubVocabularies(availableSubVocabularies);
+      setIfChanged(setAvailableSubSkills, allSubSkills, availableSubSkills);
+      setIfChanged(setAvailableGrammar, allGrammar, availableGrammar);
+      setIfChanged(setAvailableSubgrammar, allSubgrammar, availableSubgrammar);
+      setIfChanged(setAvailableFilteredSubVocabularies, availableSubVocabularies, availableFilteredSubVocabularies);
     }
-  }, [getSelectedLanguageId, allSubSkills, allGrammar, allSubgrammar, defaultLanguage, selectedSkills, selectedGrammar, selectedVocabularies, availableSkills, availableVocabularies, availableSubVocabularies]);
+  }, [
+    getSelectedLanguageId,
+    allSubSkills,
+    allGrammar,
+    allSubgrammar,
+    defaultLanguage,
+    selectedSkills,
+    selectedGrammar,
+    selectedVocabularies,
+    availableSkills,
+    availableVocabularies,
+    availableSubVocabularies,
+    availableSubSkills,
+    availableGrammar,
+    availableSubgrammar,
+    availableFilteredSubVocabularies,
+  ]);
 
   useEffect(() => {
     applyLanguageFilters();
@@ -485,7 +532,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
               Guardando...
             </span>
           ) : (
-            'Save'
+            'Guardar'
           )}
         </button>
       </div>
