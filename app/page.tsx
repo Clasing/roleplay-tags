@@ -39,7 +39,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <PageHeader
-        title="Clashing Roleplays App"
+        title="Clasing Roleplays App"
         subtitle="Genera y administra tus roleplays con inteligencia artificial"
         logoUrl="https://clasing-public.s3.eu-central-1.amazonaws.com/logos/clasing-new-iso-color.svg"
       />
