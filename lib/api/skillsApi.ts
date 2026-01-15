@@ -4,6 +4,23 @@ import { Roleplay } from '@/types/roleplay';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9090';
 
+type WithOptionalId<T> = Omit<T, 'id'> & { id?: string; _id?: string };
+
+// Normaliza respuestas que vienen con `_id` a un campo `id` consistente
+const normalizeCollection = <T extends { id: string }>(data: unknown): T[] => {
+  if (!Array.isArray(data)) return [];
+
+  return (data as WithOptionalId<T>[]) 
+    .map((item) => {
+      const normalizedId = item.id || item._id;
+      if (!normalizedId) return null;
+
+      const { _id, ...rest } = item as Record<string, unknown>;
+      return { ...rest, id: normalizedId } as T;
+    })
+    .filter(Boolean) as T[];
+};
+
 export interface Skill {
   id: string;
   value: string;
@@ -110,8 +127,8 @@ export async function getLanguages(): Promise<Language[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/languages`);
     if (!response.ok) throw new Error('Error al obtener languages');
-    const data: Language[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<Language>(data);
   } catch (error) {
     console.error('Error fetching languages:', error);
     return [];
@@ -163,8 +180,8 @@ export async function getSkills(): Promise<Skill[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/skills`);
     if (!response.ok) throw new Error('Error al obtener skills');
-    const data: Skill[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<Skill>(data);
   } catch (error) {
     console.error('Error fetching skills:', error);
     return [];
@@ -216,8 +233,8 @@ export async function getSubSkills(): Promise<SubSkill[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-skills`);
     if (!response.ok) throw new Error('Error al obtener sub-skills');
-    const data: SubSkill[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<SubSkill>(data);
   } catch (error) {
     console.error('Error fetching sub-skills:', error);
     return [];
@@ -269,8 +286,8 @@ export async function getGrammarTypes(): Promise<GrammarType[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/grammar-types`);
     if (!response.ok) throw new Error('Error al obtener grammar types');
-    const data: GrammarType[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<GrammarType>(data);
   } catch (error) {
     console.error('Error fetching grammar types:', error);
     return [];
@@ -322,8 +339,8 @@ export async function getSubGrammarTypes(): Promise<SubGrammarType[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-grammar-types`);
     if (!response.ok) throw new Error('Error al obtener sub-grammar types');
-    const data: SubGrammarType[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<SubGrammarType>(data);
   } catch (error) {
     console.error('Error fetching sub-grammar types:', error);
     return [];
@@ -403,8 +420,8 @@ export async function getVocabularies(): Promise<Vocabulary[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/vocabularies`);
     if (!response.ok) throw new Error('Error al obtener vocabularios');
-    const data: Vocabulary[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<Vocabulary>(data);
   } catch (error) {
     console.error('Error fetching vocabularies:', error);
     return [];
@@ -415,8 +432,8 @@ export async function getSubVocabularies(): Promise<SubVocabulary[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-vocabularies`);
     if (!response.ok) throw new Error('Error al obtener sub-vocabularios');
-    const data: SubVocabulary[] = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data: unknown = await response.json();
+    return normalizeCollection<SubVocabulary>(data);
   } catch (error) {
     console.error('Error fetching sub-vocabularies:', error);
     return [];
