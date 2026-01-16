@@ -140,6 +140,26 @@ export async function getRoleplayActivity(roleplayId: string): Promise<RoleplayA
   }
 }
 
+// Roleplay Activities por idioma (si el backend soporta query language)
+export async function getRoleplayActivityByLanguage(roleplayId: string, language: string): Promise<RoleplayActivity | null> {
+  try {
+    if (!roleplayId || !language) return null;
+
+    const url = `${API_BASE_URL}/api/v2/whiteboard-activities/activities/roleplays/${roleplayId}?language=${encodeURIComponent(language)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      // si falla, intenta sin filtro para no dejar vacío
+      return await getRoleplayActivity(roleplayId);
+    }
+    const data: RoleplayActivity = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching roleplay activity by language:', error);
+    return null;
+  }
+}
+
 // Languages
 export async function getLanguages(): Promise<Language[]> {
   try {
