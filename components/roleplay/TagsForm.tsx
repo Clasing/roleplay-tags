@@ -55,6 +55,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [availableVocabularies, setAvailableVocabularies] = useState<Vocabulary[]>([]);
   const [availableSubVocabularies, setAvailableSubVocabularies] = useState<SubVocabulary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLanguageFiltering, setIsLanguageFiltering] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [themes, setThemes] = useState<string[]>(roleplay.name ? [roleplay.name] : []);
   const [newThemeInput, setNewThemeInput] = useState('');
@@ -280,8 +281,16 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   ]);
 
   useEffect(() => {
-    applyLanguageFilters();
-  }, [applyLanguageFilters]);
+    if (isLoading) return;
+    setIsLanguageFiltering(true);
+
+    const id = requestAnimationFrame(() => {
+      applyLanguageFilters();
+      setIsLanguageFiltering(false);
+    });
+
+    return () => cancelAnimationFrame(id);
+  }, [applyLanguageFilters, selectedLanguage, isLoading]);
 
   const handleAddTheme = () => {
     const value = newThemeInput.trim();
@@ -464,34 +473,44 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-black dark:border-zinc-700 dark:border-t-white"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <MultiSelect
-              label="skillMain"
-              options={availableSkills.map(s => s.value)}
-              selected={selectedSkills}
-              onChange={setSelectedSkills}
-            />
+          <div className="relative">
+            {isLanguageFiltering && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-sm dark:bg-black/60">
+                <div className="flex items-center gap-3 rounded-xl bg-white/80 px-4 py-3 text-sm font-medium text-gray-700 shadow-sm dark:bg-zinc-900/80 dark:text-gray-200">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-black dark:border-gray-500 dark:border-t-white"></div>
+                  Actualizando por idioma...
+                </div>
+              </div>
+            )}
+            <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isLanguageFiltering ? 'opacity-60 pointer-events-none' : ''}`}>
+              <MultiSelect
+                label="skillMain"
+                options={availableSkills.map(s => s.value)}
+                selected={selectedSkills}
+                onChange={setSelectedSkills}
+              />
 
-            <MultiSelect
-              label="subSkill"
-              options={availableSubSkills.map(s => s.value)}
-              selected={selectedSubSkills}
-              onChange={setSelectedSubSkills}
-            />
+              <MultiSelect
+                label="subSkill"
+                options={availableSubSkills.map(s => s.value)}
+                selected={selectedSubSkills}
+                onChange={setSelectedSubSkills}
+              />
 
-            <MultiSelect
-              label="grammar"
-              options={availableGrammar.map(g => g.value)}
-              selected={selectedGrammar}
-              onChange={setSelectedGrammar}
-            />
+              <MultiSelect
+                label="grammar"
+                options={availableGrammar.map(g => g.value)}
+                selected={selectedGrammar}
+                onChange={setSelectedGrammar}
+              />
 
-            <MultiSelect
-              label="subgrammar"
-              options={availableSubgrammar.map(sg => sg.value)}
-              selected={selectedSubgrammar}
-              onChange={setSelectedSubgrammar}
-            />
+              <MultiSelect
+                label="subgrammar"
+                options={availableSubgrammar.map(sg => sg.value)}
+                selected={selectedSubgrammar}
+                onChange={setSelectedSubgrammar}
+              />
+            </div>
           </div>
         )}
 
