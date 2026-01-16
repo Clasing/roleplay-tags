@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Roleplay } from '@/types/roleplay';
 import Tabs from '@/components/ui/Tabs';
 import TagsForm from './TagsForm';
-import { getLanguages, getRoleplayActivity, Language, RoleplayActivity } from '@/lib/api/skillsApi';
+import { getLanguages, getRoleplayActivity, getRoleplayActivityByLanguage, Language, RoleplayActivity } from '@/lib/api/skillsApi';
 
 interface RoleplayDetailsProps {
   roleplay: Roleplay;
@@ -42,7 +42,9 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
       setActivityError(null);
 
       try {
-        const activityData = await getRoleplayActivity(roleplayId);
+        const activityData = selectedLanguage
+          ? await getRoleplayActivityByLanguage(roleplayId, selectedLanguage)
+          : await getRoleplayActivity(roleplayId);
 
         if (!activityData) {
           setRoleplayActivity(null);
@@ -61,7 +63,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
     };
 
     loadRoleplayActivity();
-  }, [roleplay._id, roleplay.id]);
+  }, [roleplay._id, roleplay.id, selectedLanguage]);
 
   const handleSaveTags = (data: {
     vocabularyTags: string[];
