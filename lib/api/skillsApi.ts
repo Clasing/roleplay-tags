@@ -65,6 +65,19 @@ export interface SubVocabulary {
   vocabulary?: string;
 }
 
+export interface TagDetail {
+  id: string;
+  value: string;
+  language?: string;
+  languageId?: string;
+  grammar?: string;
+}
+
+export interface LanguageDetailInfo {
+  id: string;
+  name: string;
+}
+
 export interface RoleplayActivity {
   id: string;
   rolePlayId: string;
@@ -77,6 +90,11 @@ export interface RoleplayActivity {
   subGrammar: string[];
   vocabularyI: string | null;
   durationAprox: number;
+  languageDetail?: LanguageDetailInfo;
+  skillMainDetail?: TagDetail[];
+  subSkillDetail?: TagDetail[];
+  grammarDetail?: TagDetail[];
+  subGrammarDetail?: TagDetail[];
 }
 
 // Roleplays

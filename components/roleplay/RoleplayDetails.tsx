@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Roleplay, RoleplayLanguage } from '@/types/roleplay';
+import { Roleplay } from '@/types/roleplay';
 import Tabs from '@/components/ui/Tabs';
 import TagsForm from './TagsForm';
-import { getLanguages, Language } from '@/lib/api/skillsApi';
+import { getLanguages, getRoleplayActivity, Language, RoleplayActivity } from '@/lib/api/skillsApi';
 
 interface RoleplayDetailsProps {
   roleplay: Roleplay;
@@ -16,8 +16,9 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<string>(roleplay.language || '');
   const [isLoadingLanguages, setIsLoadingLanguages] = useState(true);
-  const [roleplayLanguage, setRoleplayLanguage] = useState<RoleplayLanguage | null>(null);
-  const [isLoadingRoleplayLanguage, setIsLoadingRoleplayLanguage] = useState(false);
+  const [roleplayActivity, setRoleplayActivity] = useState<RoleplayActivity | null>(null);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadLanguages = async () => {
@@ -33,35 +34,34 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   }, [roleplay.language]);
 
   useEffect(() => {
-    const loadRoleplayLanguage = async () => {
+    const loadRoleplayActivity = async () => {
       const roleplayId = roleplay._id || roleplay.id;
-      if (!selectedLanguage || !roleplayId) return;
-      
-      setIsLoadingRoleplayLanguage(true);
-      try {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9090';
-        const roleplayLanguageUrl = `${apiBaseUrl}/api/v2/clasing-ai/roleplay-agents/languages/by-role?roleId=${encodeURIComponent(
-          roleplayId
-        )}&language=${encodeURIComponent(selectedLanguage)}`;
+      if (!roleplayId) return;
 
-        const response = await fetch(roleplayLanguageUrl);
-        
-        if (response.ok) {
-          const data = await response.json();
-          setRoleplayLanguage(data);
-        } else {
-          setRoleplayLanguage(null);
+      setIsLoadingActivity(true);
+      setActivityError(null);
+
+      try {
+        const activityData = await getRoleplayActivity(roleplayId);
+
+        if (!activityData) {
+          setRoleplayActivity(null);
+          setActivityError('No se encontraron etiquetas para este roleplay.');
+          return;
         }
+
+        setRoleplayActivity(activityData);
       } catch (error) {
-        console.error('Error loading roleplay language:', error);
-        setRoleplayLanguage(null);
+        console.error('Error loading roleplay activity:', error);
+        setRoleplayActivity(null);
+        setActivityError('Error al cargar la información de contexto.');
       } finally {
-        setIsLoadingRoleplayLanguage(false);
+        setIsLoadingActivity(false);
       }
     };
-    
-    loadRoleplayLanguage();
-  }, [selectedLanguage, roleplay._id, roleplay.id]);
+
+    loadRoleplayActivity();
+  }, [roleplay._id, roleplay.id]);
 
   const handleSaveTags = (data: {
     vocabularyTags: string[];
@@ -72,6 +72,63 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
     language: string;
   }) => {
     console.log('Guardar tags:', data);
+  };
+
+  const resolveLanguageLabel = (languageId?: string) => {
+    if (!languageId) {
+      if (roleplayActivity?.languageDetail?.name) {
+        return roleplayActivity.languageDetail.name;
+      }
+      if (roleplayActivity?.language) return roleplayActivity.language;
+      return 'General';
+    }
+
+    const matchById = availableLanguages.find((lang) => lang.id === languageId);
+    if (matchById) return matchById.language;
+
+    const matchByName = availableLanguages.find((lang) => lang.language === languageId);
+    if (matchByName) return matchByName.language;
+
+    if (roleplayActivity?.languageDetail && roleplayActivity.languageDetail.id === languageId) {
+      return roleplayActivity.languageDetail.name;
+    }
+
+    return languageId;
+  };
+
+  const mapTagDetails = (
+    details?: Array<{ id: string; value: string; language?: string; languageId?: string }>,
+    fallbackIds: string[] = [],
+    defaultLanguageId?: string
+  ): TagDisplayItem[] => {
+    if (details && details.length > 0) {
+      return details.map((item) => ({
+        id: item.id,
+        value: item.value,
+        languageId: item.language ?? item.languageId ?? defaultLanguageId,
+      }));
+    }
+
+    if (fallbackIds.length > 0) {
+      return fallbackIds.map((value) => ({
+        id: value,
+        value,
+        languageId: defaultLanguageId,
+      }));
+    }
+
+    return [];
+  };
+
+  const normalizeThemeTags = (theme: string | string[] | undefined, defaultLanguageId?: string): TagDisplayItem[] => {
+    if (!theme) return [];
+    const values = Array.isArray(theme) ? theme : [theme];
+
+    return values.map((value) => ({
+      id: value,
+      value,
+      languageId: defaultLanguageId,
+    }));
   };
 
   const tabs = [
@@ -183,74 +240,92 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
 
         {activeTab === 'context' && (
           <div className="space-y-6">
-            {isLoadingRoleplayLanguage ? (
+            {isLoadingActivity ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-black dark:border-zinc-700 dark:border-t-white"></div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Cargando información del idioma...</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Cargando etiquetas del roleplay...</span>
                 </div>
               </div>
-            ) : roleplayLanguage ? (
+            ) : roleplayActivity ? (
               <>
-                {roleplayLanguage.description && (
-                  <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-lg bg-gray-100 p-2 dark:bg-zinc-900">
-                        <svg
-                          className="h-5 w-5 text-gray-600 dark:text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 6h16M4 12h16M4 18h7"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-black dark:text-white">
-                        Descripción ({selectedLanguage})
-                      </h3>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-black">
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                        {roleplayLanguage.description}
-                      </pre>
-                    </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Idioma interno
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {resolveLanguageLabel(roleplayActivity.languageDetail?.id ?? roleplayActivity.language)}
+                    </p>
+                    {roleplayActivity.languageDetail?.name && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Alias: {roleplayActivity.languageDetail.name}
+                      </p>
+                    )}
                   </div>
-                )}
+                  <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Duración aproximada
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {roleplayActivity.durationAprox ? `${roleplayActivity.durationAprox} min` : 'No especificada'}
+                    </p>
+                  </div>
+                </div>
 
-                {roleplayLanguage.studentContext && (
-                  <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-lg bg-gray-100 p-2 dark:bg-zinc-900">
-                        <svg
-                          className="h-5 w-5 text-gray-600 dark:text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-black dark:text-white">
-                        Contexto del Estudiante ({selectedLanguage})
-                      </h3>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-black">
-                      <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                        {roleplayLanguage.studentContext}
-                      </pre>
-                    </div>
-                  </div>
-                )}
+                <TagListSection
+                  title="Temas"
+                  description="Temáticas configuradas para este roleplay."
+                  items={normalizeThemeTags(
+                    roleplayActivity.theme,
+                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
+
+                <TagListSection
+                  title="Habilidades principales"
+                  description="Skills principales asociadas a la actividad."
+                  items={mapTagDetails(
+                    roleplayActivity.skillMainDetail,
+                    roleplayActivity.skillMain,
+                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
+
+                <TagListSection
+                  title="Sub-habilidades"
+                  description="Sub-skills detalladas por idioma."
+                  items={mapTagDetails(
+                    roleplayActivity.subSkillDetail,
+                    roleplayActivity.subSkill,
+                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
+
+                <TagListSection
+                  title="Gramática"
+                  description="Etiquetas de gramática aplicadas."
+                  items={mapTagDetails(
+                    roleplayActivity.grammarDetail,
+                    roleplayActivity.grammar,
+                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
+
+                <TagListSection
+                  title="Sub-gramática"
+                  description="Etiquetas de sub-gramática asociadas."
+                  items={mapTagDetails(
+                    roleplayActivity.subGrammarDetail,
+                    roleplayActivity.subGrammar,
+                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
               </>
             ) : (
               <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-950">
@@ -273,7 +348,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                   No hay información disponible
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No se encontró información para el idioma {selectedLanguage}
+                  {activityError || 'No se encontró información para este roleplay.'}
                 </p>
               </div>
             )}
@@ -306,6 +381,50 @@ function InfoItem({ label, value }: InfoItemProps) {
       <span className="text-sm font-semibold text-gray-900 dark:text-white">
         {value}
       </span>
+    </div>
+  );
+}
+
+interface TagDisplayItem {
+  id: string;
+  value: string;
+  languageId?: string;
+}
+
+interface TagListSectionProps {
+  title: string;
+  description?: string;
+  items: TagDisplayItem[];
+  resolveLanguageLabel: (languageId?: string) => string;
+}
+
+function TagListSection({ title, description, items, resolveLanguageLabel }: TagListSectionProps) {
+  return (
+    <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="space-y-1">
+        <h3 className="text-lg font-semibold text-black dark:text-white">{title}</h3>
+        {description && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+        )}
+      </div>
+
+      {items.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <span
+              key={`${title}-${item.id}`}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+            >
+              {item.value}
+              <span className="rounded-full bg-gray-900/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:bg-zinc-800 dark:text-gray-300">
+                {resolveLanguageLabel(item.languageId)}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500 dark:text-gray-400">No hay etiquetas registradas.</p>
+      )}
     </div>
   );
 }
