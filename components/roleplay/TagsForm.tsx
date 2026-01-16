@@ -54,6 +54,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
   const [availableVocabularies, setAvailableVocabularies] = useState<Vocabulary[]>([]);
   const [availableSubVocabularies, setAvailableSubVocabularies] = useState<SubVocabulary[]>([]);
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isLanguageFiltering, setIsLanguageFiltering] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -164,10 +165,36 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   );
 
   const getSelectedLanguageId = useCallback(() => {
-    if (!selectedLanguage) return undefined;
-    const normalized = selectedLanguage.toUpperCase();
-    return availableLanguages.find(l => l.language.toUpperCase() === normalized)?.id;
-  }, [selectedLanguage, availableLanguages]);
+    const normalize = (value?: string) => value?.trim().toUpperCase();
+    if (!selectedLanguage) {
+      return defaultLanguage?.id || availableLanguages[0]?.id;
+    }
+
+    const normalized = normalize(selectedLanguage);
+    const match = availableLanguages.find(l => normalize(l.language) === normalized)?.id;
+
+    if (match) return match;
+    if (defaultLanguage?.id) return defaultLanguage.id;
+    return availableLanguages[0]?.id;
+  }, [selectedLanguage, availableLanguages, defaultLanguage]);
+  
+  const resolveSelectedLanguageId = useCallback(() => {
+    const normalize = (value?: string) => value?.trim().toUpperCase();
+    const normalized = normalize(selectedLanguage);
+
+    if (normalized) {
+      const match = availableLanguages.find(l => normalize(l.language) === normalized)?.id;
+      if (match) return match;
+    }
+
+    if (defaultLanguage?.id) return defaultLanguage.id;
+    return availableLanguages[0]?.id;
+  }, [selectedLanguage, availableLanguages, defaultLanguage]);
+
+  useEffect(() => {
+    const id = resolveSelectedLanguageId();
+    setSelectedLanguageId(id);
+  }, [resolveSelectedLanguageId]);
 
   const [availableFilteredSubVocabularies, setAvailableFilteredSubVocabularies] = useState<SubVocabulary[]>([]);
 
@@ -178,7 +205,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       if (!listEqual(next, prev)) setter(next);
     };
 
-    const languageId = getSelectedLanguageId();
+    const languageId = selectedLanguageId;
     const defaultLangId = defaultLanguage?.id;
     const selectedSkillIds = selectedSkills.map(skillValue => availableSkills.find(s => s.value === skillValue)?.id).filter(Boolean) as string[];
     const selectedGrammarIds = selectedGrammar.map(grammarValue => allGrammar.find(g => g.value === grammarValue)?.id).filter(Boolean) as string[];
@@ -197,23 +224,14 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         return languageMatch && skillMatch;
       });
 
-      const filteredGrammar = allGrammar.filter(grammar => {
-        const grammarLanguage = (grammar as unknown as { language?: string; languageId?: string }).language ?? (grammar as unknown as { languageId?: string }).languageId;
-        // Filter by language
-        const languageMatch = !grammarLanguage || grammarLanguage === defaultLangId || grammarLanguage === languageId;
-        return languageMatch;
-      });
+      // Grammar aplica para todos los idiomas: no filtrar por language
+      const filteredGrammar = allGrammar;
 
       const filteredSubgrammar = allSubgrammar.filter(subGrammar => {
-        const subGrammarLanguage = (subGrammar as unknown as { language?: string; languageId?: string }).language ?? (subGrammar as unknown as { languageId?: string }).languageId;
         const subGrammarParent = (subGrammar as unknown as { grammar?: string }).grammar;
-        
-        // Filter by language
-        const languageMatch = !subGrammarLanguage || subGrammarLanguage === defaultLangId || subGrammarLanguage === languageId;
-        // Filter by parent grammar if any are selected
+        // Solo filtra por parent grammar; no filtramos por language porque grammar es global
         const grammarMatch = selectedGrammarIds.length === 0 || selectedGrammarIds.includes(subGrammarParent || '');
-        
-        return languageMatch && grammarMatch;
+        return grammarMatch;
       });
 
       const filteredSubVocabularies = availableSubVocabularies.filter(subVocab => {
@@ -263,7 +281,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setIfChanged(setAvailableFilteredSubVocabularies, availableSubVocabularies, availableFilteredSubVocabularies);
     }
   }, [
-    getSelectedLanguageId,
+    selectedLanguageId,
     allSubSkills,
     allGrammar,
     allSubgrammar,
@@ -281,7 +299,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   ]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !selectedLanguageId) return;
     setIsLanguageFiltering(true);
 
     const id = requestAnimationFrame(() => {
@@ -290,7 +308,7 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     });
 
     return () => cancelAnimationFrame(id);
-  }, [applyLanguageFilters, selectedLanguage, isLoading]);
+  }, [applyLanguageFilters, selectedLanguageId, isLoading]);
 
   const handleAddTheme = () => {
     const value = newThemeInput.trim();
@@ -307,7 +325,12 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     setIsSaving(true);
     
     try {
-      const languageId = getSelectedLanguageId() || '';
+      const languageId = selectedLanguageId || '';
+      if (!languageId) {
+        pushToast('warning', 'Selecciona un idioma antes de guardar');
+        setIsSaving(false);
+        return;
+      }
       
       const skillIds = selectedSkills
         .map(skillName => availableSkills.find(s => s.value === skillName)?.id)
@@ -325,12 +348,6 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         .map(subGrammarName => availableSubgrammar.find(sg => sg.value === subGrammarName)?.id)
         .filter(id => id) as string[];
       
-      if (!languageId) {
-        pushToast('warning', 'Selecciona un idioma antes de guardar');
-        setIsSaving(false);
-        return;
-      }
-
       if (themes.length === 0) {
         pushToast('warning', 'Agrega al menos un tema');
         setIsSaving(false);
