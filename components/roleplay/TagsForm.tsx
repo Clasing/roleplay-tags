@@ -11,6 +11,7 @@ import {
   getLanguages,
   createActivity,
   getRoleplayActivity,
+  getRoleplayActivityByLanguage,
   Skill,
   SubSkill,
   GrammarType,
@@ -69,20 +70,86 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedSubVocabularies, setSelectedSubVocabularies] = useState<string[]>([]);
   const { toasts, pushToast, dismiss } = useToast();
 
+  const resetSelections = useCallback(() => {
+    setSelectedSkills([]);
+    setSelectedSubSkills([]);
+    setSelectedGrammar([]);
+    setSelectedSubgrammar([]);
+    setSelectedVocabularies([]);
+    setSelectedSubVocabularies([]);
+    setThemes(roleplay.name ? [roleplay.name] : []);
+    setNewThemeInput('');
+    setDuration(30);
+  }, [roleplay.name]);
+
+  const hydrateActivity = useCallback(
+    (activity: Awaited<ReturnType<typeof getRoleplayActivity>> | null) => {
+      if (!activity) return;
+
+      const resolveValue = <T extends { id?: string; value: string }>(collection: T[], idOrValue?: string | null) => {
+        if (!idOrValue) return undefined;
+        const match = collection.find(
+          (item) =>
+            item.id === idOrValue ||
+            (item as unknown as { _id?: string })._id === idOrValue ||
+            item.value === idOrValue
+        );
+        return match?.value;
+      };
+
+      const skillValues = (activity.skillMain || [])
+        .map((id) => resolveValue(availableSkills, id))
+        .filter(Boolean) as string[];
+
+      const subSkillValues = (activity.subSkill || [])
+        .map((id) => resolveValue(allSubSkills, id))
+        .filter(Boolean) as string[];
+
+      const grammarValues = (activity.grammar || [])
+        .map((id) => resolveValue(allGrammar, id))
+        .filter(Boolean) as string[];
+
+      const subGrammarValues = (activity.subGrammar || [])
+        .map((id) => resolveValue(allSubgrammar, id))
+        .filter(Boolean) as string[];
+
+      const vocabularyValues = (activity as unknown as { vocabulary?: string[] }).vocabulary
+        ? ((activity as unknown as { vocabulary?: string[] }).vocabulary || [])
+            .map((id) => resolveValue(availableVocabularies, id))
+            .filter(Boolean) as string[]
+        : [];
+
+      const subVocabularyValues = (activity as unknown as { subVocabulary?: string[] }).subVocabulary
+        ? ((activity as unknown as { subVocabulary?: string[] }).subVocabulary || [])
+            .map((id) => resolveValue(availableSubVocabularies, id))
+            .filter(Boolean) as string[]
+        : [];
+
+      setSelectedSkills(skillValues);
+      setSelectedSubSkills(subSkillValues);
+      setSelectedGrammar(grammarValues);
+      setSelectedSubgrammar(subGrammarValues);
+      setSelectedVocabularies(vocabularyValues);
+      setSelectedSubVocabularies(subVocabularyValues);
+
+      if (activity.theme) {
+        const incomingThemes = Array.isArray(activity.theme)
+          ? activity.theme.filter(Boolean)
+          : [activity.theme].filter(Boolean);
+        if (incomingThemes.length > 0) {
+          setThemes(incomingThemes);
+        }
+      }
+
+      if (activity.durationAprox) setDuration(activity.durationAprox);
+    },
+    [availableSkills, allSubSkills, allGrammar, allSubgrammar, availableVocabularies, availableSubVocabularies]
+  );
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      
-      // Resetear todos los estados cuando cambia el roleplay
-      setSelectedSkills([]);
-      setSelectedSubSkills([]);
-      setSelectedGrammar([]);
-      setSelectedSubgrammar([]);
-      setSelectedVocabularies([]);
-      setSelectedSubVocabularies([]);
-      setThemes(roleplay.name ? [roleplay.name] : []);
-      setNewThemeInput('');
-      setDuration(30);
+      resetSelections();
       
       // Cargar datos básicos
       const [skills, subSkills, grammar, subgrammar, languages, vocabularies, subVocabularies] = await Promise.all([
@@ -95,13 +162,6 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         getSubVocabularies(),
       ]);
 
-      // Cargar actividad solo si existe un roleplayId válido
-      let activity = null;
-      const roleplayId = roleplay._id || roleplay.id;
-      if (roleplayId) {
-        activity = await getRoleplayActivity(roleplayId);
-      }
-      
       setAvailableSkills(skills);
       setAllSubSkills(sortByValue(subSkills));
       setAvailableGrammar(sortByValue(grammar));
@@ -111,73 +171,39 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       setAvailableVocabularies(sortByValue(vocabularies));
       setAvailableSubVocabularies(sortByValue(subVocabularies));
 
-      // Si existe actividad, cargar los tags existentes
-      if (activity) {
-        // Mapear IDs a valores (names). Incluimos fallback por si el backend devuelve _id o directamente el valor.
-        const resolveValue = <T extends { id?: string; value: string }>(collection: T[], idOrValue: string) => {
-          const match = collection.find(item => item.id === idOrValue || (item as unknown as { _id?: string })._id === idOrValue || item.value === idOrValue);
-          return match?.value;
-        };
-
-        const skillValues = activity.skillMain
-          .map(id => resolveValue(skills, id))
-          .filter(Boolean) as string[];
-        
-        const subSkillValues = activity.subSkill
-          .map(id => resolveValue(subSkills, id))
-          .filter(Boolean) as string[];
-        
-        const grammarValues = activity.grammar
-          .map(id => resolveValue(grammar, id))
-          .filter(Boolean) as string[];
-        
-        const subGrammarValues = activity.subGrammar
-          .map(id => resolveValue(subgrammar, id))
-          .filter(Boolean) as string[];
-
-        setSelectedSkills(skillValues);
-        setSelectedSubSkills(subSkillValues);
-        setSelectedGrammar(grammarValues);
-        setSelectedSubgrammar(subGrammarValues);
-        
-        // TODO: Load vocabulary and sub-vocabulary selections when backend supports it
-        // For now, vocabularies are stored differently in the activity
-        
-        if (activity.theme) {
-          const incomingThemes = Array.isArray(activity.theme)
-            ? activity.theme.filter(Boolean)
-            : [activity.theme].filter(Boolean);
-          if (incomingThemes.length > 0) {
-            setThemes(incomingThemes);
-          }
-        }
-        if (activity.durationAprox) setDuration(activity.durationAprox);
-      }
-
       setIsLoading(false);
     };
     loadData();
-  }, [roleplay._id, roleplay.id, roleplay.name]);
+  }, [roleplay._id, roleplay.id, roleplay.name, resetSelections]);
+
+  useEffect(() => {
+    const loadActivityByLanguage = async () => {
+      const roleplayId = roleplay._id || roleplay.id;
+      if (!roleplayId || !selectedLanguageId || isLoading) return;
+
+      setIsLanguageFiltering(true);
+      resetSelections();
+
+      const languageParam = selectedLanguageId || selectedLanguage;
+      const activity =
+        (languageParam && (await getRoleplayActivityByLanguage(roleplayId, languageParam))) ||
+        (await getRoleplayActivity(roleplayId));
+
+      if (activity) {
+        hydrateActivity(activity);
+      }
+
+      setIsLanguageFiltering(false);
+    };
+
+    loadActivityByLanguage();
+  }, [roleplay._id, roleplay.id, selectedLanguageId, selectedLanguage, isLoading, hydrateActivity, resetSelections]);
 
   const defaultLanguage = useMemo(
     () => availableLanguages.find((lang) => lang.language?.toUpperCase() === 'DEFAULT'),
     [availableLanguages]
   );
 
-  const getSelectedLanguageId = useCallback(() => {
-    const normalize = (value?: string) => value?.trim().toUpperCase();
-    if (!selectedLanguage) {
-      return defaultLanguage?.id || availableLanguages[0]?.id;
-    }
-
-    const normalized = normalize(selectedLanguage);
-    const match = availableLanguages.find(l => normalize(l.language) === normalized)?.id;
-
-    if (match) return match;
-    if (defaultLanguage?.id) return defaultLanguage.id;
-    return availableLanguages[0]?.id;
-  }, [selectedLanguage, availableLanguages, defaultLanguage]);
-  
   const resolveSelectedLanguageId = useCallback(() => {
     const normalize = (value?: string) => value?.trim().toUpperCase();
     const normalized = normalize(selectedLanguage);
