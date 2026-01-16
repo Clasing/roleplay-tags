@@ -20,6 +20,13 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
 
+  const resolveLanguageParam = (langName?: string) => {
+    if (!langName) return undefined;
+    const normalize = (v: string) => v.trim().toUpperCase();
+    const match = availableLanguages.find((l) => normalize(l.language) === normalize(langName));
+    return match?.id || langName;
+  };
+
   useEffect(() => {
     const loadLanguages = async () => {
       setIsLoadingLanguages(true);
@@ -40,10 +47,12 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
 
       setIsLoadingActivity(true);
       setActivityError(null);
+      setRoleplayActivity(null);
 
       try {
-        const activityData = selectedLanguage
-          ? await getRoleplayActivityByLanguage(roleplayId, selectedLanguage)
+        const languageParam = resolveLanguageParam(selectedLanguage);
+        const activityData = languageParam
+          ? await getRoleplayActivityByLanguage(roleplayId, languageParam)
           : await getRoleplayActivity(roleplayId);
 
         if (!activityData) {
@@ -63,7 +72,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
     };
 
     loadRoleplayActivity();
-  }, [roleplay._id, roleplay.id, selectedLanguage]);
+  }, [roleplay._id || roleplay.id, selectedLanguage, availableLanguages.length]);
 
   const handleSaveTags = (data: {
     vocabularyTags: string[];
