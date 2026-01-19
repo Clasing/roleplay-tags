@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { Roleplay } from '@/types/roleplay';
 import Tabs from '@/components/ui/Tabs';
@@ -19,6 +19,45 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   const [roleplayActivity, setRoleplayActivity] = useState<RoleplayActivity | null>(null);
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const selectedLanguageId = useMemo(() => {
+    if (!selectedLanguage) {
+      return roleplayActivity?.languageDetail?.id ?? roleplayActivity?.language ?? null;
+    }
+
+    const normalizedSelected = selectedLanguage.trim().toUpperCase();
+    const match = availableLanguages.find((lang) => lang.language?.trim().toUpperCase() === normalizedSelected);
+    if (match?.id) {
+      return match.id;
+    }
+
+    if (
+      roleplayActivity?.languageDetail?.name &&
+      roleplayActivity.languageDetail.name.trim().toUpperCase() === normalizedSelected
+    ) {
+      return roleplayActivity.languageDetail.id;
+    }
+
+    return roleplayActivity?.languageDetail?.id ?? roleplayActivity?.language ?? null;
+  }, [selectedLanguage, availableLanguages, roleplayActivity]);
+  const languageFilterKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (selectedLanguageId) {
+      keys.add(selectedLanguageId.trim().toLowerCase());
+    }
+    if (selectedLanguage) {
+      keys.add(selectedLanguage.trim().toLowerCase());
+    }
+    return keys;
+  }, [selectedLanguageId, selectedLanguage]);
+  const applyLanguageFilter = (items: TagDisplayItem[]): TagDisplayItem[] => {
+    if (!items.length || languageFilterKeys.size === 0) {
+      return items;
+    }
+    return items.filter((item) => {
+      if (!item.languageId) return false;
+      return languageFilterKeys.has(item.languageId.trim().toLowerCase());
+    });
+  };
 
   const resolveLanguageParam = (langName?: string) => {
     if (!langName) return undefined;
@@ -113,19 +152,19 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
     defaultLanguageId?: string
   ): TagDisplayItem[] => {
     if (details && details.length > 0) {
-      return details.map((item) => ({
+      return applyLanguageFilter(details.map((item) => ({
         id: item.id,
         value: item.value,
         languageId: item.language ?? item.languageId ?? defaultLanguageId,
-      }));
+      })));
     }
 
     if (fallbackIds.length > 0) {
-      return fallbackIds.map((value) => ({
+      return applyLanguageFilter(fallbackIds.map((value) => ({
         id: value,
         value,
         languageId: defaultLanguageId,
-      }));
+      })));
     }
 
     return [];
@@ -135,12 +174,16 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
     if (!theme) return [];
     const values = Array.isArray(theme) ? theme : [theme];
 
-    return values.map((value) => ({
+    return applyLanguageFilter(values.map((value) => ({
       id: value,
       value,
       languageId: defaultLanguageId,
-    }));
+    })));
   };
+
+  const effectiveLanguageId = selectedLanguageId ?? roleplayActivity?.languageDetail?.id ?? roleplayActivity?.language;
+  const displayLanguageName = resolveLanguageLabel(effectiveLanguageId ?? undefined);
+  const displayAlias = selectedLanguage?.trim() || roleplayActivity?.languageDetail?.name || displayLanguageName;
 
   const tabs = [
     { id: 'prompt', label: 'Prompt' },
@@ -266,11 +309,11 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                       Idioma interno
                     </p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {resolveLanguageLabel(roleplayActivity.languageDetail?.id ?? roleplayActivity.language)}
+                      {displayLanguageName}
                     </p>
-                    {roleplayActivity.languageDetail?.name && (
+                    {displayAlias && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Alias: {roleplayActivity.languageDetail.name}
+                        Alias: {displayAlias}
                       </p>
                     )}
                   </div>
@@ -423,7 +466,7 @@ function TagListSection({ title, description, items, resolveLanguageLabel }: Tag
         <div className="flex flex-wrap gap-2">
           {items.map((item) => (
             <span
-              key={`${title}-${item.id}`}
+              key={`${title}-${item.id}-${item.languageId ?? 'general'}`}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
             >
               {item.value}
