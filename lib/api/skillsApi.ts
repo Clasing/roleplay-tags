@@ -95,13 +95,16 @@ export interface RoleplayActivity {
   subSkill: string[];
   grammar: string[];
   subGrammar: string[];
-  vocabularyI: string | null;
+  vocabularyI?: string[] | null;
+  subVocabulary?: string[] | null;
   durationAprox: number;
   languageDetail?: LanguageDetailInfo;
   skillMainDetail?: TagDetail[];
   subSkillDetail?: TagDetail[];
   grammarDetail?: TagDetail[];
   subGrammarDetail?: TagDetail[];
+  vocabularyDetail?: TagDetail[];
+  subVocabularyDetail?: TagDetail[];
 }
 
 // Roleplays
@@ -442,7 +445,7 @@ export interface ActivityPayload {
   subSkill: string[];
   grammar: string[];
   subGrammar: string[];
-  vocabulary: string[];
+  vocabularyI: string[];
   subVocabulary: string[];
   durationAprox: number;
 }
@@ -454,7 +457,12 @@ export async function createActivity(payload: ActivityPayload): Promise<boolean>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    return response.ok;
+    if (!response.ok) {
+      const errorPayload = await response.text();
+      console.error('Error creating activity:', response.status, errorPayload);
+      return false;
+    }
+    return true;
   } catch (error) {
     console.error('Error creating activity:', error);
     return false;

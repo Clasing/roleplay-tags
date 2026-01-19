@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Roleplay } from '@/types/roleplay';
 import Tabs from '@/components/ui/Tabs';
 import TagsForm from './TagsForm';
-import { getLanguages, getRoleplayActivity, getRoleplayActivityByLanguage, Language, RoleplayActivity } from '@/lib/api/skillsApi';
+import { getLanguages, getRoleplayActivity, getRoleplayActivityByLanguage, Language, RoleplayActivity, TagDetail } from '@/lib/api/skillsApi';
 
 interface RoleplayDetailsProps {
   roleplay: Roleplay;
@@ -41,14 +41,25 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   }, [selectedLanguage, availableLanguages, roleplayActivity]);
   const languageFilterKeys = useMemo(() => {
     const keys = new Set<string>();
-    if (selectedLanguageId) {
-      keys.add(selectedLanguageId.trim().toLowerCase());
-    }
-    if (selectedLanguage) {
-      keys.add(selectedLanguage.trim().toLowerCase());
-    }
+    const push = (value?: string | null) => {
+      if (!value) return;
+      keys.add(value.trim().toLowerCase());
+    };
+
+    push(selectedLanguageId);
+    push(selectedLanguage);
+    push(roleplayActivity?.languageDetail?.id);
+    push(roleplayActivity?.languageDetail?.name);
+    push(roleplayActivity?.language);
+
     return keys;
-  }, [selectedLanguageId, selectedLanguage]);
+  }, [
+    selectedLanguageId,
+    selectedLanguage,
+    roleplayActivity?.languageDetail?.id,
+    roleplayActivity?.languageDetail?.name,
+    roleplayActivity?.language,
+  ]);
   const applyLanguageFilter = (items: TagDisplayItem[]): TagDisplayItem[] => {
     if (!items.length || languageFilterKeys.size === 0) {
       return items;
@@ -147,7 +158,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   };
 
   const mapTagDetails = (
-    details?: Array<{ id: string; value: string; language?: string; languageId?: string }>,
+    details?: TagDetail[],
     fallbackIds: string[] = [],
     defaultLanguageId?: string
   ): TagDisplayItem[] => {
@@ -184,6 +195,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   const effectiveLanguageId = selectedLanguageId ?? roleplayActivity?.languageDetail?.id ?? roleplayActivity?.language;
   const displayLanguageName = resolveLanguageLabel(effectiveLanguageId ?? undefined);
   const displayAlias = selectedLanguage?.trim() || roleplayActivity?.languageDetail?.name || displayLanguageName;
+  const baseTagLanguageId = roleplayActivity?.languageDetail?.id ?? roleplayActivity?.language;
 
   const tabs = [
     { id: 'prompt', label: 'Prompt' },
@@ -330,10 +342,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                 <TagListSection
                   title="Temas"
                   description="Temáticas configuradas para este roleplay."
-                  items={normalizeThemeTags(
-                    roleplayActivity.theme,
-                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
-                  )}
+                  items={normalizeThemeTags(roleplayActivity.theme, baseTagLanguageId)}
                   resolveLanguageLabel={resolveLanguageLabel}
                 />
 
@@ -343,7 +352,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                   items={mapTagDetails(
                     roleplayActivity.skillMainDetail,
                     roleplayActivity.skillMain,
-                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                    baseTagLanguageId
                   )}
                   resolveLanguageLabel={resolveLanguageLabel}
                 />
@@ -354,7 +363,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                   items={mapTagDetails(
                     roleplayActivity.subSkillDetail,
                     roleplayActivity.subSkill,
-                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                    baseTagLanguageId
                   )}
                   resolveLanguageLabel={resolveLanguageLabel}
                 />
@@ -365,7 +374,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                   items={mapTagDetails(
                     roleplayActivity.grammarDetail,
                     roleplayActivity.grammar,
-                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                    baseTagLanguageId
                   )}
                   resolveLanguageLabel={resolveLanguageLabel}
                 />
@@ -376,7 +385,29 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
                   items={mapTagDetails(
                     roleplayActivity.subGrammarDetail,
                     roleplayActivity.subGrammar,
-                    roleplayActivity.languageDetail?.id ?? roleplayActivity.language
+                    baseTagLanguageId
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
+
+                <TagListSection
+                  title="Vocabulario"
+                  description="Listas de vocabulario asignadas a la actividad."
+                  items={mapTagDetails(
+                    roleplayActivity.vocabularyDetail,
+                    roleplayActivity.vocabularyI || [],
+                    baseTagLanguageId
+                  )}
+                  resolveLanguageLabel={resolveLanguageLabel}
+                />
+
+                <TagListSection
+                  title="Sub-vocabulario"
+                  description="Elementos de sub-vocabulario asociados."
+                  items={mapTagDetails(
+                    roleplayActivity.subVocabularyDetail,
+                    [],
+                    baseTagLanguageId
                   )}
                   resolveLanguageLabel={resolveLanguageLabel}
                 />
@@ -414,6 +445,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
             roleplay={roleplay} 
             onSave={handleSaveTags}
             selectedLanguage={selectedLanguage}
+            selectedLanguageId={selectedLanguageId ?? null}
           />
         )}
       </div>

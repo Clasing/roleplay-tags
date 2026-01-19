@@ -39,9 +39,10 @@ interface TagsFormProps {
   roleplay: Roleplay;
   onSave: (data: TagsFormData) => void;
   selectedLanguage: string;
+  selectedLanguageId?: string | null;
 }
 
-export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFormProps) {
+export default function TagsForm({ roleplay, onSave, selectedLanguage, selectedLanguageId: inheritedLanguageId }: TagsFormProps) {
   const sortByValue = <T extends { value: string }>(items: T[]) =>
     [...items].sort((a, b) => a.value.localeCompare(b.value, 'es', { sensitivity: 'base' }));
 
@@ -150,17 +151,15 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         .map((id) => resolveValue(allSubgrammar, id))
         .filter(Boolean) as string[];
 
-      const vocabularyValues = (activity as unknown as { vocabulary?: string[] }).vocabulary
-        ? ((activity as unknown as { vocabulary?: string[] }).vocabulary || [])
-            .map((id) => resolveValue(availableVocabularies, id))
-            .filter(Boolean) as string[]
-        : [];
+      const vocabularyIdsFromActivity = (activity as unknown as { vocabularyI?: string[] | null }).vocabularyI || [];
+      const vocabularyValues = vocabularyIdsFromActivity
+        .map((id) => resolveValue(availableVocabularies, id))
+        .filter(Boolean) as string[];
 
-      const subVocabularyValues = (activity as unknown as { subVocabulary?: string[] }).subVocabulary
-        ? ((activity as unknown as { subVocabulary?: string[] }).subVocabulary || [])
-            .map((id) => resolveValue(availableSubVocabularies, id))
-            .filter(Boolean) as string[]
-        : [];
+      const subVocabularyIdsFromActivity = (activity as unknown as { subVocabulary?: string[] | null }).subVocabulary || [];
+      const subVocabularyValues = subVocabularyIdsFromActivity
+        .map((id) => resolveValue(availableSubVocabularies, id))
+        .filter(Boolean) as string[];
 
       setSelectedSkills(skillValues);
       setSelectedSubSkills(subSkillValues);
@@ -242,17 +241,26 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   );
 
   const resolveSelectedLanguageId = useCallback(() => {
+    if (inheritedLanguageId) {
+      return inheritedLanguageId;
+    }
+
     const normalize = (value?: string) => value?.trim().toUpperCase();
     const normalized = normalize(selectedLanguage);
 
     if (normalized) {
       const match = availableLanguages.find(l => normalize(l.language) === normalized)?.id;
       if (match) return match;
+
+      const matchById = availableLanguages.find((l) => l.id === selectedLanguage);
+      if (matchById) return matchById.id;
+
+      return selectedLanguage;
     }
 
     if (defaultLanguage?.id) return defaultLanguage.id;
     return availableLanguages[0]?.id;
-  }, [selectedLanguage, availableLanguages, defaultLanguage]);
+  }, [inheritedLanguageId, selectedLanguage, availableLanguages, defaultLanguage]);
 
   useEffect(() => {
     const id = resolveSelectedLanguageId();
@@ -277,6 +285,12 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const subVocabularyOptions = useMemo(
     () => buildOptions(availableFilteredSubVocabularies),
     [availableFilteredSubVocabularies, buildOptions]
+  );
+  const findSubVocabularyByValue = useCallback(
+    (value: string) =>
+      availableSubVocabularies.find((sv) => sv.value === value) ||
+      availableFilteredSubVocabularies.find((sv) => sv.value === value),
+    [availableSubVocabularies, availableFilteredSubVocabularies]
   );
 
   const applyLanguageFilters = useCallback(() => {
@@ -406,8 +420,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     setIsSaving(true);
     
     try {
-      const languageId = selectedLanguageId || '';
-      if (!languageId) {
+      const resolvedLanguageId = selectedLanguageId || resolveSelectedLanguageId() || '';
+      if (!resolvedLanguageId) {
         pushToast('warning', 'Selecciona un idioma antes de guardar');
         setIsSaving(false);
         return;
@@ -443,23 +457,33 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       }
       
       const vocabularyIds = selectedVocabularies
-        .map(vocabValue => availableVocabularies.find(v => v.value === vocabValue)?.id)
-        .filter(id => id) as string[];
-      
-      const subVocabularyIds = selectedSubVocabularies
-        .map(subVocabValue => availableFilteredSubVocabularies.find(sv => sv.value === subVocabValue)?.id)
-        .filter(id => id) as string[];
+        .map((vocabValue) => availableVocabularies.find((v) => v.value === vocabValue)?.id)
+        .filter((id): id is string => Boolean(id));
+
+      const subVocabularyMatches = selectedSubVocabularies
+        .map((value) => findSubVocabularyByValue(value))
+        .filter((match): match is SubVocabulary => Boolean(match));
+
+      const subVocabularyIds = subVocabularyMatches
+        .map((match) => match.id)
+        .filter((id): id is string => Boolean(id));
+
+      const subVocabularyParentIds = subVocabularyMatches
+        .map((match) => match.vocabularyId || match.vocabulary)
+        .filter((id): id is string => Boolean(id));
+
+      const combinedVocabularyIds = Array.from(new Set([...vocabularyIds, ...subVocabularyParentIds]));
 
       const payload: ActivityPayload = {
         rolePlayId: roleplayIdForSave,
         textId: null,
-        language: languageId,
+        language: resolvedLanguageId,
         theme: themes,
         skillMain: skillIds,
         subSkill: subSkillIds,
         grammar: grammarIds,
         subGrammar: subGrammarIds,
-        vocabulary: vocabularyIds,
+        vocabularyI: combinedVocabularyIds,
         subVocabulary: subVocabularyIds,
         durationAprox: duration,
       };
