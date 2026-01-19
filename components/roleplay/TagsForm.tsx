@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Roleplay } from '@/types/roleplay';
-import MultiSelect from '@/components/roleplay/MultiSelect';
+import MultiSelect, { MultiSelectOption } from '@/components/roleplay/MultiSelect';
 import {
   getSkills,
   getSubSkills,
@@ -69,6 +69,43 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedVocabularies, setSelectedVocabularies] = useState<string[]>([]);
   const [selectedSubVocabularies, setSelectedSubVocabularies] = useState<string[]>([]);
   const { toasts, pushToast, dismiss } = useToast();
+  const resolveTagLanguageName = useCallback(
+    (languageRef?: string) => {
+      if (!languageRef) return 'General';
+      const normalized = languageRef.trim().toUpperCase();
+
+      const byId = availableLanguages.find((lang) => lang.id === languageRef);
+      if (byId?.language) return byId.language;
+
+      const byName = availableLanguages.find(
+        (lang) => lang.language?.trim().toUpperCase() === normalized
+      );
+      if (byName?.language) return byName.language;
+
+      return languageRef;
+    },
+    [availableLanguages]
+  );
+
+  const formatOptionLabel = useCallback(
+    (value: string, languageRef?: string) => {
+      const languageName = resolveTagLanguageName(languageRef);
+      return `${value} | ${languageName}`;
+    },
+    [resolveTagLanguageName]
+  );
+
+  const buildOptions = useCallback(
+    <T extends { value: string; language?: string; languageId?: string }>(
+      items: T[],
+      fallbackLanguage?: string
+    ): MultiSelectOption[] =>
+      items.map((item) => ({
+        value: item.value,
+        label: formatOptionLabel(item.value, item.language ?? item.languageId ?? fallbackLanguage),
+      })),
+    [formatOptionLabel]
+  );
 
   const resetSelections = useCallback(() => {
     setSelectedSkills([]);
@@ -223,6 +260,24 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   }, [resolveSelectedLanguageId]);
 
   const [availableFilteredSubVocabularies, setAvailableFilteredSubVocabularies] = useState<SubVocabulary[]>([]);
+  const skillOptions = useMemo(() => buildOptions(availableSkills), [availableSkills, buildOptions]);
+  const subSkillOptions = useMemo(
+    () => buildOptions(availableSubSkills),
+    [availableSubSkills, buildOptions]
+  );
+  const grammarOptions = useMemo(() => buildOptions(availableGrammar), [availableGrammar, buildOptions]);
+  const subGrammarOptions = useMemo(
+    () => buildOptions(availableSubgrammar),
+    [availableSubgrammar, buildOptions]
+  );
+  const vocabularyOptions = useMemo(
+    () => buildOptions(availableVocabularies),
+    [availableVocabularies, buildOptions]
+  );
+  const subVocabularyOptions = useMemo(
+    () => buildOptions(availableFilteredSubVocabularies),
+    [availableFilteredSubVocabularies, buildOptions]
+  );
 
   const applyLanguageFilters = useCallback(() => {
     const arraysEqual = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
@@ -528,28 +583,28 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
             <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isLanguageFiltering ? 'opacity-60 pointer-events-none' : ''}`}>
               <MultiSelect
                 label="skillMain"
-                options={availableSkills.map(s => s.value)}
+                options={skillOptions}
                 selected={selectedSkills}
                 onChange={setSelectedSkills}
               />
 
               <MultiSelect
                 label="subSkill"
-                options={availableSubSkills.map(s => s.value)}
+                options={subSkillOptions}
                 selected={selectedSubSkills}
                 onChange={setSelectedSubSkills}
               />
 
               <MultiSelect
                 label="grammar"
-                options={availableGrammar.map(g => g.value)}
+                options={grammarOptions}
                 selected={selectedGrammar}
                 onChange={setSelectedGrammar}
               />
 
               <MultiSelect
                 label="subgrammar"
-                options={availableSubgrammar.map(sg => sg.value)}
+                options={subGrammarOptions}
                 selected={selectedSubgrammar}
                 onChange={setSelectedSubgrammar}
               />
@@ -570,13 +625,13 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <MultiSelect
               label="Vocabulary Main"
-              options={availableVocabularies.map(v => v.value)}
+              options={vocabularyOptions}
               selected={selectedVocabularies}
               onChange={setSelectedVocabularies}
             />
             <MultiSelect
               label="Sub Vocabularies"
-              options={availableFilteredSubVocabularies.map(sv => sv.value)}
+              options={subVocabularyOptions}
               selected={selectedSubVocabularies}
               onChange={setSelectedSubVocabularies}
             />

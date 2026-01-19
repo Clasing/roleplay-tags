@@ -24,6 +24,8 @@ const normalizeCollection = <T extends { id: string }>(data: unknown): T[] => {
 export interface Skill {
   id: string;
   value: string;
+  language?: string;
+  languageId?: string;
 }
 
 export interface SubSkill {
@@ -38,6 +40,7 @@ export interface GrammarType {
   id: string;
   value: string;
   language: string;
+  languageId?: string;
 }
 
 export interface SubGrammarType {
@@ -56,6 +59,8 @@ export interface Language {
 export interface Vocabulary {
   id: string;
   value: string;
+  language?: string;
+  languageId?: string;
 }
 
 export interface SubVocabulary {
@@ -63,6 +68,8 @@ export interface SubVocabulary {
   value: string;
   vocabularyId: string;
   vocabulary?: string;
+  language?: string;
+  languageId?: string;
 }
 
 export interface TagDetail {
