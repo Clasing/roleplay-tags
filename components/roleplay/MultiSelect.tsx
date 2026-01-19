@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface MultiSelectProps {
   label: string;
@@ -21,7 +21,10 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
   const [newValue, setNewValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredOptions = options.filter(option =>
+  // Deduplicate options to avoid repeated keys when the source array includes duplicates.
+  const uniqueOptions = useMemo(() => Array.from(new Set(options)), [options]);
+
+  const filteredOptions = uniqueOptions.filter(option =>
     option.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
