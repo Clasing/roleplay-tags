@@ -10,6 +10,7 @@ import {
   getSubGrammarTypes,
   getLanguages,
   createActivity,
+  updateActivity,
   getRoleplayActivity,
   getRoleplayActivityByLanguage,
   Skill,
@@ -59,6 +60,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage, selectedL
   const [selectedLanguageId, setSelectedLanguageId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isLanguageFiltering, setIsLanguageFiltering] = useState(false);
+  const [hasExistingActivity, setHasExistingActivity] = useState(false);
+  const [activityId, setActivityId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [themes, setThemes] = useState<string[]>(roleplay.name ? [roleplay.name] : []);
   const [newThemeInput, setNewThemeInput] = useState('');
@@ -215,18 +218,34 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage, selectedL
   useEffect(() => {
     const loadActivityByLanguage = async () => {
       const roleplayId = roleplay._id || roleplay.id;
-      if (!roleplayId || !selectedLanguageId || isLoading) return;
+      if (!roleplayId || !selectedLanguageId || isLoading) {
+        resetSelections();
+        setHasExistingActivity(false);
+        setActivityId(null);
+        return;
+      }
 
       setIsLanguageFiltering(true);
       resetSelections();
+      setHasExistingActivity(false);
+      setActivityId(null);
 
       const languageParam = selectedLanguageId || selectedLanguage;
-      const activity =
-        (languageParam && (await getRoleplayActivityByLanguage(roleplayId, languageParam))) ||
-        (await getRoleplayActivity(roleplayId));
+      let activity = null;
+      if (languageParam) {
+        activity = await getRoleplayActivityByLanguage(roleplayId, languageParam);
+      } else {
+        activity = await getRoleplayActivity(roleplayId);
+      }
 
       if (activity) {
         hydrateActivity(activity);
+        setHasExistingActivity(true);
+        setActivityId(activity.id || null);
+      } else {
+        resetSelections();
+        setHasExistingActivity(false);
+        setActivityId(null);
       }
 
       setIsLanguageFiltering(false);
@@ -490,10 +509,15 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage, selectedL
 
       console.log('Payload a enviar:', payload);
       
-      const success = await createActivity(payload);
+      const success = hasExistingActivity
+        ? activityId
+          ? await updateActivity(activityId, payload)
+          : (pushToast('error', 'No se encontró el ID de la actividad para actualizar'), false)
+        : await createActivity(payload);
       
       if (success) {
-        pushToast('success', 'Actividad guardada exitosamente');
+        pushToast('success', hasExistingActivity ? 'Actividad actualizada exitosamente' : 'Actividad guardada exitosamente');
+        setHasExistingActivity(true);
         onSave({
           vocabularyTags: [],
           skillMain: selectedSkills,
@@ -665,15 +689,17 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage, selectedL
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full rounded-lg bg-pink-300 py-3 text-sm font-semibold text-pink-900 transition-all hover:bg-pink-400 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-pink-800 dark:text-pink-100 dark:hover:bg-pink-700"
+          className={`w-full rounded-lg py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${hasExistingActivity ? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:text-black dark:hover:bg-blue-400' : 'bg-pink-300 text-pink-900 hover:bg-pink-400 dark:bg-pink-800 dark:text-pink-100 dark:hover:bg-pink-700'}`}
         >
           {isSaving ? (
             <span className="flex items-center justify-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-pink-900 border-t-transparent dark:border-pink-100 dark:border-t-transparent"></div>
-              Guardando...
+              <div
+                className={`h-4 w-4 animate-spin rounded-full border-2 border-t-transparent ${hasExistingActivity ? 'border-white dark:border-black' : 'border-pink-900 dark:border-pink-100'}`}
+              ></div>
+              {hasExistingActivity ? 'Actualizando...' : 'Guardando...'}
             </span>
           ) : (
-            'Guardar'
+            hasExistingActivity ? 'Actualizar' : 'Guardar'
           )}
         </button>
       </div>
