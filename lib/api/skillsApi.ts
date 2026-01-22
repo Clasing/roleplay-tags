@@ -159,8 +159,7 @@ export async function getRoleplayActivityByLanguage(roleplayId: string, language
     const response = await fetch(url);
     if (!response.ok) {
       if (response.status === 404) return null;
-      // si falla, intenta sin filtro para no dejar vacío
-      return await getRoleplayActivity(roleplayId);
+      return null;
     }
     const data: RoleplayActivity = await response.json();
     return data;
@@ -465,6 +464,27 @@ export async function createActivity(payload: ActivityPayload): Promise<boolean>
     return true;
   } catch (error) {
     console.error('Error creating activity:', error);
+    return false;
+  }
+}
+
+export async function updateActivity(activityId: string, payload: ActivityPayload): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/activities/${activityId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorPayload = await response.text();
+      console.error('Error updating activity:', response.status, errorPayload);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating activity:', error);
     return false;
   }
 }
