@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Roleplay } from '@/types/roleplay';
-import MultiSelect from '@/components/roleplay/MultiSelect';
+import MultiSelect, { MultiSelectOption } from '@/components/roleplay/MultiSelect';
 import {
   getSkills,
   getSubSkills,
@@ -39,9 +39,10 @@ interface TagsFormProps {
   roleplay: Roleplay;
   onSave: (data: TagsFormData) => void;
   selectedLanguage: string;
+  selectedLanguageId?: string | null;
 }
 
-export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFormProps) {
+export default function TagsForm({ roleplay, onSave, selectedLanguage, selectedLanguageId: inheritedLanguageId }: TagsFormProps) {
   const sortByValue = <T extends { value: string }>(items: T[]) =>
     [...items].sort((a, b) => a.value.localeCompare(b.value, 'es', { sensitivity: 'base' }));
 
@@ -69,6 +70,43 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   const [selectedVocabularies, setSelectedVocabularies] = useState<string[]>([]);
   const [selectedSubVocabularies, setSelectedSubVocabularies] = useState<string[]>([]);
   const { toasts, pushToast, dismiss } = useToast();
+  const resolveTagLanguageName = useCallback(
+    (languageRef?: string) => {
+      if (!languageRef) return 'General';
+      const normalized = languageRef.trim().toUpperCase();
+
+      const byId = availableLanguages.find((lang) => lang.id === languageRef);
+      if (byId?.language) return byId.language;
+
+      const byName = availableLanguages.find(
+        (lang) => lang.language?.trim().toUpperCase() === normalized
+      );
+      if (byName?.language) return byName.language;
+
+      return languageRef;
+    },
+    [availableLanguages]
+  );
+
+  const formatOptionLabel = useCallback(
+    (value: string, languageRef?: string) => {
+      const languageName = resolveTagLanguageName(languageRef);
+      return `${value} | ${languageName}`;
+    },
+    [resolveTagLanguageName]
+  );
+
+  const buildOptions = useCallback(
+    <T extends { value: string; language?: string; languageId?: string }>(
+      items: T[],
+      fallbackLanguage?: string
+    ): MultiSelectOption[] =>
+      items.map((item) => ({
+        value: item.value,
+        label: formatOptionLabel(item.value, item.language ?? item.languageId ?? fallbackLanguage),
+      })),
+    [formatOptionLabel]
+  );
 
   const resetSelections = useCallback(() => {
     setSelectedSkills([]);
@@ -113,17 +151,15 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
         .map((id) => resolveValue(allSubgrammar, id))
         .filter(Boolean) as string[];
 
-      const vocabularyValues = (activity as unknown as { vocabulary?: string[] }).vocabulary
-        ? ((activity as unknown as { vocabulary?: string[] }).vocabulary || [])
-            .map((id) => resolveValue(availableVocabularies, id))
-            .filter(Boolean) as string[]
-        : [];
+      const vocabularyIdsFromActivity = (activity as unknown as { vocabularyI?: string[] | null }).vocabularyI || [];
+      const vocabularyValues = vocabularyIdsFromActivity
+        .map((id) => resolveValue(availableVocabularies, id))
+        .filter(Boolean) as string[];
 
-      const subVocabularyValues = (activity as unknown as { subVocabulary?: string[] }).subVocabulary
-        ? ((activity as unknown as { subVocabulary?: string[] }).subVocabulary || [])
-            .map((id) => resolveValue(availableSubVocabularies, id))
-            .filter(Boolean) as string[]
-        : [];
+      const subVocabularyIdsFromActivity = (activity as unknown as { subVocabulary?: string[] | null }).subVocabulary || [];
+      const subVocabularyValues = subVocabularyIdsFromActivity
+        .map((id) => resolveValue(availableSubVocabularies, id))
+        .filter(Boolean) as string[];
 
       setSelectedSkills(skillValues);
       setSelectedSubSkills(subSkillValues);
@@ -205,17 +241,26 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   );
 
   const resolveSelectedLanguageId = useCallback(() => {
+    if (inheritedLanguageId) {
+      return inheritedLanguageId;
+    }
+
     const normalize = (value?: string) => value?.trim().toUpperCase();
     const normalized = normalize(selectedLanguage);
 
     if (normalized) {
       const match = availableLanguages.find(l => normalize(l.language) === normalized)?.id;
       if (match) return match;
+
+      const matchById = availableLanguages.find((l) => l.id === selectedLanguage);
+      if (matchById) return matchById.id;
+
+      return selectedLanguage;
     }
 
     if (defaultLanguage?.id) return defaultLanguage.id;
     return availableLanguages[0]?.id;
-  }, [selectedLanguage, availableLanguages, defaultLanguage]);
+  }, [inheritedLanguageId, selectedLanguage, availableLanguages, defaultLanguage]);
 
   useEffect(() => {
     const id = resolveSelectedLanguageId();
@@ -223,6 +268,30 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
   }, [resolveSelectedLanguageId]);
 
   const [availableFilteredSubVocabularies, setAvailableFilteredSubVocabularies] = useState<SubVocabulary[]>([]);
+  const skillOptions = useMemo(() => buildOptions(availableSkills), [availableSkills, buildOptions]);
+  const subSkillOptions = useMemo(
+    () => buildOptions(availableSubSkills),
+    [availableSubSkills, buildOptions]
+  );
+  const grammarOptions = useMemo(() => buildOptions(availableGrammar), [availableGrammar, buildOptions]);
+  const subGrammarOptions = useMemo(
+    () => buildOptions(availableSubgrammar),
+    [availableSubgrammar, buildOptions]
+  );
+  const vocabularyOptions = useMemo(
+    () => buildOptions(availableVocabularies),
+    [availableVocabularies, buildOptions]
+  );
+  const subVocabularyOptions = useMemo(
+    () => buildOptions(availableFilteredSubVocabularies),
+    [availableFilteredSubVocabularies, buildOptions]
+  );
+  const findSubVocabularyByValue = useCallback(
+    (value: string) =>
+      availableSubVocabularies.find((sv) => sv.value === value) ||
+      availableFilteredSubVocabularies.find((sv) => sv.value === value),
+    [availableSubVocabularies, availableFilteredSubVocabularies]
+  );
 
   const applyLanguageFilters = useCallback(() => {
     const arraysEqual = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
@@ -351,8 +420,8 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
     setIsSaving(true);
     
     try {
-      const languageId = selectedLanguageId || '';
-      if (!languageId) {
+      const resolvedLanguageId = selectedLanguageId || resolveSelectedLanguageId() || '';
+      if (!resolvedLanguageId) {
         pushToast('warning', 'Selecciona un idioma antes de guardar');
         setIsSaving(false);
         return;
@@ -388,23 +457,33 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
       }
       
       const vocabularyIds = selectedVocabularies
-        .map(vocabValue => availableVocabularies.find(v => v.value === vocabValue)?.id)
-        .filter(id => id) as string[];
-      
-      const subVocabularyIds = selectedSubVocabularies
-        .map(subVocabValue => availableFilteredSubVocabularies.find(sv => sv.value === subVocabValue)?.id)
-        .filter(id => id) as string[];
+        .map((vocabValue) => availableVocabularies.find((v) => v.value === vocabValue)?.id)
+        .filter((id): id is string => Boolean(id));
+
+      const subVocabularyMatches = selectedSubVocabularies
+        .map((value) => findSubVocabularyByValue(value))
+        .filter((match): match is SubVocabulary => Boolean(match));
+
+      const subVocabularyIds = subVocabularyMatches
+        .map((match) => match.id)
+        .filter((id): id is string => Boolean(id));
+
+      const subVocabularyParentIds = subVocabularyMatches
+        .map((match) => match.vocabularyId || match.vocabulary)
+        .filter((id): id is string => Boolean(id));
+
+      const combinedVocabularyIds = Array.from(new Set([...vocabularyIds, ...subVocabularyParentIds]));
 
       const payload: ActivityPayload = {
         rolePlayId: roleplayIdForSave,
         textId: null,
-        language: languageId,
+        language: resolvedLanguageId,
         theme: themes,
         skillMain: skillIds,
         subSkill: subSkillIds,
         grammar: grammarIds,
         subGrammar: subGrammarIds,
-        vocabulary: vocabularyIds,
+        vocabularyI: combinedVocabularyIds,
         subVocabulary: subVocabularyIds,
         durationAprox: duration,
       };
@@ -528,28 +607,28 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
             <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isLanguageFiltering ? 'opacity-60 pointer-events-none' : ''}`}>
               <MultiSelect
                 label="skillMain"
-                options={availableSkills.map(s => s.value)}
+                options={skillOptions}
                 selected={selectedSkills}
                 onChange={setSelectedSkills}
               />
 
               <MultiSelect
                 label="subSkill"
-                options={availableSubSkills.map(s => s.value)}
+                options={subSkillOptions}
                 selected={selectedSubSkills}
                 onChange={setSelectedSubSkills}
               />
 
               <MultiSelect
                 label="grammar"
-                options={availableGrammar.map(g => g.value)}
+                options={grammarOptions}
                 selected={selectedGrammar}
                 onChange={setSelectedGrammar}
               />
 
               <MultiSelect
                 label="subgrammar"
-                options={availableSubgrammar.map(sg => sg.value)}
+                options={subGrammarOptions}
                 selected={selectedSubgrammar}
                 onChange={setSelectedSubgrammar}
               />
@@ -570,13 +649,13 @@ export default function TagsForm({ roleplay, onSave, selectedLanguage }: TagsFor
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <MultiSelect
               label="Vocabulary Main"
-              options={availableVocabularies.map(v => v.value)}
+              options={vocabularyOptions}
               selected={selectedVocabularies}
               onChange={setSelectedVocabularies}
             />
             <MultiSelect
               label="Sub Vocabularies"
-              options={availableFilteredSubVocabularies.map(sv => sv.value)}
+              options={subVocabularyOptions}
               selected={selectedSubVocabularies}
               onChange={setSelectedSubVocabularies}
             />

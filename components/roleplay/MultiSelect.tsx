@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 interface MultiSelectProps {
   label: string;
-  options: string[];
+  options: MultiSelectOption[];
   selected: string[];
   onChange: (selected: string[]) => void;
   onAddNew?: (value: string) => Promise<boolean>;
@@ -21,24 +21,29 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
   const [newValue, setNewValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Deduplicate options to avoid repeated keys when the source array includes duplicates.
-  const uniqueOptions = useMemo(() => Array.from(new Set(options)), [options]);
+  const optionLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    options.forEach((option) => {
+      map.set(option.value, option.label);
+    });
+    return map;
+  }, [options]);
 
-  const filteredOptions = uniqueOptions.filter(option =>
+  const filteredOptions = options.filter(option =>
     option.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const toggleOption = (option: string) => {
+  const toggleOption = (optionValue: string) => {
     if (singleSelect) {
       // En modo single-select, solo permite seleccionar uno y cierra automáticamente
-      onChange(selected.includes(option) ? [] : [option]);
+      onChange(selected.includes(optionValue) ? [] : [optionValue]);
       setIsOpen(false);
     } else {
       // En modo multi-select, permite múltiples selecciones
-      if (selected.includes(option)) {
-        onChange(selected.filter(item => item !== option));
+      if (selected.includes(optionValue)) {
+        onChange(selected.filter(item => item !== optionValue));
       } else {
-        onChange([...selected, option]);
+        onChange([...selected, optionValue]);
       }
     }
   };
@@ -130,18 +135,18 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
                   // Modo single-select: usar botones simples sin checkboxes
                   filteredOptions.map((option) => (
                     <button
-                      key={option}
-                      onClick={() => toggleOption(option)}
+                      key={option.value}
+                      onClick={() => toggleOption(option.value)}
                       className={`group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all ${
-                        selected.includes(option)
+                        selected.includes(option.value)
                           ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
                           : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
                       }`}
                     >
-                      <span className={`text-sm font-medium ${selected.includes(option) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {option}
+                      <span className={`text-sm font-medium ${selected.includes(option.value) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {option.label}
                       </span>
-                      {selected.includes(option) && (
+                      {selected.includes(option.value) && (
                         <svg
                           className="ml-auto h-4 w-4 text-blue-600 dark:text-blue-400"
                           fill="none"
@@ -157,9 +162,9 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
                   // Modo multi-select: usar checkboxes
                   filteredOptions.map((option) => (
                     <label
-                      key={option}
+                      key={option.value}
                       className={`group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${
-                        selected.includes(option)
+                        selected.includes(option.value)
                           ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-100'
                           : 'hover:bg-gray-50 dark:hover:bg-zinc-900'
                       }`}
@@ -167,11 +172,11 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
                       <div className="relative flex items-center">
                         <input
                           type="checkbox"
-                          checked={selected.includes(option)}
-                          onChange={() => toggleOption(option)}
+                          checked={selected.includes(option.value)}
+                          onChange={() => toggleOption(option.value)}
                           className="h-4 w-4 cursor-pointer rounded border-2 border-gray-300 text-blue-600 transition-all focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 dark:border-zinc-600 dark:bg-zinc-800"
                         />
-                        {selected.includes(option) && (
+                        {selected.includes(option.value) && (
                           <svg
                             className="pointer-events-none absolute left-0.5 h-3 w-3 text-white"
                             fill="none"
@@ -182,8 +187,8 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
                           </svg>
                         )}
                       </div>
-                      <span className={`text-sm font-medium ${selected.includes(option) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {option}
+                      <span className={`text-sm font-medium ${selected.includes(option.value) ? 'text-blue-900 dark:text-blue-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {option.label}
                       </span>
                     </label>
                   ))
@@ -289,12 +294,12 @@ export default function MultiSelect({ label, options, selected, onChange, onAddN
         >
           {hasSelections ? (
             <div className="flex flex-wrap gap-1.5">
-              {selected.map((item, index) => (
+              {selected.map((item) => (
                 <span
-                  key={index}
+                  key={item}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-900 dark:bg-blue-950/50 dark:text-blue-100"
                 >
-                  {item}
+                  {optionLabelMap.get(item) ?? item}
                 </span>
               ))}
             </div>
