@@ -175,7 +175,8 @@ export async function getLanguages(): Promise<Language[]> {
     const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/languages`);
     if (!response.ok) throw new Error('Error al obtener languages');
     const data: unknown = await response.json();
-    return normalizeCollection<Language>(data);
+    const languages = normalizeCollection<Language>(data);
+    return languages.sort((a, b) => b.language.localeCompare(a.language));
   } catch (error) {
     console.error('Error fetching languages:', error);
     return [];
