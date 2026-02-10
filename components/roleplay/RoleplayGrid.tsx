@@ -11,9 +11,10 @@ interface Roleplay {
 interface RoleplayGridProps {
   roleplays: Roleplay[];
   onViewDetails?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function RoleplayGrid({ roleplays, onViewDetails }: RoleplayGridProps) {
+export default function RoleplayGrid({ roleplays, onViewDetails, onDelete }: RoleplayGridProps) {
   if (roleplays.length === 0) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -46,6 +47,7 @@ export default function RoleplayGrid({ roleplays, onViewDetails }: RoleplayGridP
           key={roleplay._id || roleplay.id || roleplay.name}
           roleplay={roleplay}
           onViewDetails={onViewDetails}
+          onDelete={onDelete}
         />
       ))}
     </div>
