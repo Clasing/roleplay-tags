@@ -9,20 +9,51 @@ import RoleplayGrid from '@/components/roleplay/RoleplayGrid';
 import Modal from '@/components/ui/Modal';
 import RoleplayDetails from '@/components/roleplay/RoleplayDetails';
 import TagAdminModal from '@/components/admin/TagAdminModal';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
+import { ToastStack } from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import { Roleplay } from '@/types/roleplay';
+import { deleteRoleplay } from '@/lib/api/skillsApi';
 
 interface RoleplayListProps {
   roleplays: Roleplay[];
 }
 
-export default function RoleplayList({ roleplays }: RoleplayListProps) {
-  const { filteredRoleplays, handleSearch, handleLevelChange, selectedLevel, filteredCount, totalCount } = useRoleplaySearch(roleplays);
+export default function RoleplayList({ roleplays: initialRoleplays }: RoleplayListProps) {
+  const [roleplaysList, setRoleplaysList] = useState<Roleplay[]>(initialRoleplays);
+  const { filteredRoleplays, handleSearch, handleLevelChange, selectedLevel, filteredCount, totalCount } = useRoleplaySearch(roleplaysList);
   const { isOpen, openModal, closeModal } = useModal();
   const { isOpen: isAdminOpen, openModal: openAdmin, closeModal: closeAdmin } = useModal();
   const [selectedRoleplay, setSelectedRoleplay] = useState<Roleplay | null>(null);
 
+  // Confirmation modal state
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [roleplayToDelete, setRoleplayToDelete] = useState<string | null>(null);
+
+  // Toast notifications
+  const { toasts, pushToast, dismiss } = useToast();
+
+  const handleDelete = async (id: string) => {
+    setRoleplayToDelete(id);
+    setConfirmationOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!roleplayToDelete) return;
+
+    const success = await deleteRoleplay(roleplayToDelete);
+    if (success) {
+      setRoleplaysList((prev) => prev.filter((r) => (r._id || r.id) !== roleplayToDelete));
+      pushToast('success', 'Roleplay eliminado correctamente');
+    } else {
+      pushToast('error', 'Error al eliminar el roleplay');
+    }
+
+    setRoleplayToDelete(null);
+  };
+
   const handleViewDetails = (id: string) => {
-    const sourceList = filteredRoleplays.length ? filteredRoleplays : roleplays;
+    const sourceList = filteredRoleplays.length ? filteredRoleplays : roleplaysList;
     const roleplay = sourceList.find((r) => (r._id || r.id) === id);
     if (roleplay) {
       setSelectedRoleplay(roleplay);
@@ -71,7 +102,7 @@ export default function RoleplayList({ roleplays }: RoleplayListProps) {
             </svg>
             <span>Administrar Tags</span>
           </button>
-          
+
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {filteredCount === totalCount ? (
               <span>
@@ -90,6 +121,7 @@ export default function RoleplayList({ roleplays }: RoleplayListProps) {
       <RoleplayGrid
         roleplays={filteredRoleplays}
         onViewDetails={handleViewDetails}
+        onDelete={handleDelete}
       />
 
       <Modal
@@ -98,9 +130,9 @@ export default function RoleplayList({ roleplays }: RoleplayListProps) {
         title={selectedRoleplay?.name || 'Detalle del roleplay'}
       >
         {selectedRoleplay && (
-          <RoleplayDetails 
-            key={selectedRoleplay._id || selectedRoleplay.id} 
-            roleplay={selectedRoleplay} 
+          <RoleplayDetails
+            key={selectedRoleplay._id || selectedRoleplay.id}
+            roleplay={selectedRoleplay}
           />
         )}
       </Modal>
@@ -109,6 +141,16 @@ export default function RoleplayList({ roleplays }: RoleplayListProps) {
         isOpen={isAdminOpen}
         onClose={closeAdmin}
       />
+
+      <ConfirmationModal
+        isOpen={confirmationOpen}
+        onClose={() => setConfirmationOpen(false)}
+        onConfirm={confirmDelete}
+        title="¿Estás seguro de que quieres eliminar este roleplay?"
+        message="Esta acción no se puede deshacer."
+      />
+
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }

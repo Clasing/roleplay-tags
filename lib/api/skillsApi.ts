@@ -128,6 +128,18 @@ export async function getRoleplayById(roleplayId: string): Promise<Roleplay | nu
   }
 }
 
+export async function deleteRoleplay(roleplayId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/roleplays/${roleplayId}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting roleplay:', error);
+    return false;
+  }
+}
+
 // Roleplay Activities
 export async function getRoleplayActivity(roleplayId: string): Promise<RoleplayActivity | null> {
   try {
