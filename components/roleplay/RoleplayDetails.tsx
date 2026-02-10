@@ -14,7 +14,7 @@ interface RoleplayDetailsProps {
 export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   const [activeTab, setActiveTab] = useState('prompt');
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(roleplay.language || '');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [isLoadingLanguages, setIsLoadingLanguages] = useState(true);
   const [roleplayActivity, setRoleplayActivity] = useState<RoleplayActivity | null>(null);
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
@@ -71,10 +71,29 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
   };
 
   const resolveLanguageParam = (langName?: string) => {
-    if (!langName) return undefined;
+    if (!langName) {
+      console.log('[resolveLanguageParam] No language name provided');
+      return undefined;
+    }
+
     const normalize = (v: string) => v.trim().toUpperCase();
-    const match = availableLanguages.find((l) => normalize(l.language) === normalize(langName));
-    return match?.id || langName;
+    const normalizedInput = normalize(langName);
+
+    console.log('[resolveLanguageParam] Resolving:', {
+      input: langName,
+      normalized: normalizedInput,
+      availableCount: availableLanguages.length,
+    });
+
+    const match = availableLanguages.find((l) => normalize(l.language) === normalizedInput);
+
+    if (match?.id) {
+      console.log('[resolveLanguageParam] Found match:', { id: match.id, language: match.language });
+      return match.id;
+    }
+
+    console.warn('[resolveLanguageParam] No match found, returning input:', langName);
+    return langName;
   };
 
   useEffect(() => {
@@ -82,9 +101,30 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
       setIsLoadingLanguages(true);
       const languages = await getLanguages();
       setAvailableLanguages(languages);
-      if (!roleplay.language && languages.length > 0) {
+
+      // Set initial language
+      if (roleplay.language) {
+        // Try to find a matching language in the available languages
+        const normalize = (v: string) => v.trim().toUpperCase();
+        const normalizedRoleplayLang = normalize(roleplay.language);
+        const match = languages.find((l) => normalize(l.language) === normalizedRoleplayLang);
+
+        if (match) {
+          console.log('[RoleplayDetails] Found matching language:', match.language);
+          setSelectedLanguage(match.language);
+        } else {
+          console.warn('[RoleplayDetails] No match for roleplay.language:', roleplay.language);
+          // Set to first available language as fallback
+          if (languages.length > 0) {
+            console.log('[RoleplayDetails] Using first available language:', languages[0].language);
+            setSelectedLanguage(languages[0].language);
+          }
+        }
+      } else if (languages.length > 0) {
+        console.log('[RoleplayDetails] No roleplay.language, using first available:', languages[0].language);
         setSelectedLanguage(languages[0].language);
       }
+
       setIsLoadingLanguages(false);
     };
     loadLanguages();
@@ -95,15 +135,32 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
       const roleplayId = roleplay._id || roleplay.id;
       if (!roleplayId) return;
 
+      // Don't load if languages haven't been fetched yet
+      if (availableLanguages.length === 0) {
+        console.log('[RoleplayDetails] Waiting for languages to load...');
+        return;
+      }
+
       setIsLoadingActivity(true);
       setActivityError(null);
       setRoleplayActivity(null);
 
       try {
         const languageParam = resolveLanguageParam(selectedLanguage);
+
+        // Debug logging
+        console.log('[RoleplayDetails] Loading activity with:', {
+          roleplayId,
+          selectedLanguage,
+          languageParam,
+          availableLanguagesCount: availableLanguages.length,
+        });
+
         const activityData = languageParam
           ? await getRoleplayActivityByLanguage(roleplayId, languageParam)
           : await getRoleplayActivity(roleplayId);
+
+        console.log('[RoleplayDetails] Activity loaded:', activityData ? 'Success' : 'No data');
 
         if (!activityData) {
           setRoleplayActivity(null);
@@ -113,7 +170,7 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
 
         setRoleplayActivity(activityData);
       } catch (error) {
-        console.error('Error loading roleplay activity:', error);
+        console.error('[RoleplayDetails] Error loading roleplay activity:', error);
         setRoleplayActivity(null);
         setActivityError('Error al cargar la información de contexto.');
       } finally {
@@ -441,8 +498,8 @@ export default function RoleplayDetails({ roleplay }: RoleplayDetailsProps) {
         )}
 
         {activeTab === 'tags' && (
-          <TagsForm 
-            roleplay={roleplay} 
+          <TagsForm
+            roleplay={roleplay}
             onSave={handleSaveTags}
             selectedLanguage={selectedLanguage}
             selectedLanguageId={selectedLanguageId ?? null}
