@@ -10,7 +10,7 @@ type WithOptionalId<T> = Omit<T, 'id'> & { id?: string; _id?: string };
 const normalizeCollection = <T extends { id: string }>(data: unknown): T[] => {
   if (!Array.isArray(data)) return [];
 
-  return (data as WithOptionalId<T>[]) 
+  return (data as WithOptionalId<T>[])
     .map((item) => {
       const normalizedId = item.id || item._id;
       if (!normalizedId) return null;
@@ -68,6 +68,22 @@ export interface SubVocabulary {
   value: string;
   vocabularyId: string;
   vocabulary?: string;
+  language?: string;
+  languageId?: string;
+}
+
+export interface Category {
+  id: string;
+  value: string;
+  language?: string;
+  languageId?: string;
+}
+
+export interface SubCategory {
+  id: string;
+  value: string;
+  categoryId: string;
+  category?: string;
   language?: string;
   languageId?: string;
 }
@@ -602,6 +618,112 @@ export async function deleteSubVocabulary(id: string): Promise<boolean> {
     return response.ok;
   } catch (error) {
     console.error('Error deleting sub-vocabulary:', error);
+    return false;
+  }
+}
+
+// ==================== CATEGORY API FUNCTIONS ====================
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/categories`);
+    if (!response.ok) throw new Error('Error al obtener categorías');
+    const data: unknown = await response.json();
+    return normalizeCollection<Category>(data);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+}
+
+export async function getSubCategories(): Promise<SubCategory[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-categories`);
+    if (!response.ok) throw new Error('Error al obtener sub-categorías');
+    const data: unknown = await response.json();
+    return normalizeCollection<SubCategory>(data);
+  } catch (error) {
+    console.error('Error fetching sub-categories:', error);
+    return [];
+  }
+}
+
+export async function createCategory(value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error creating category:', error);
+    return false;
+  }
+}
+
+export async function updateCategory(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/categories/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating category:', error);
+    return false;
+  }
+}
+
+export async function deleteCategory(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/categories/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return false;
+  }
+}
+
+export async function createSubCategory(value: string, categoryId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, categoryId }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error creating sub-category:', error);
+    return false;
+  }
+}
+
+export async function updateSubCategory(id: string, value: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-categories/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error updating sub-category:', error);
+    return false;
+  }
+}
+
+export async function deleteSubCategory(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/whiteboard-activities/sub-categories/${id}`, {
+      method: 'DELETE',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting sub-category:', error);
     return false;
   }
 }
